@@ -38,14 +38,21 @@ Default provider is **Gemini**. On HTTP 429 (quota), 404 (retired model), or
 503 (overload) the gateway cools that model down and shifts to the next entry
 in `AI_MODELS`.
 
+Request/response follow the GymAI exercise-science research doc:
+- System prompt: split selection, goal→sets/reps/rest/RPE, weekly volume, injury substitutions, deload
+- User prompt builder: `buildAiRequestPrompt({ intake, catalogue, candidatePlan })`
+- Contract columns: sets/reps, restSeconds, rpe (coerced), formCue, progressionCue, substitutionNote
+
 ```js
-const { generateCompletion } = require('./src/ai');
+const { generateCompletion, buildAiRequestPrompt } = require('./src/ai');
 const { parseAiOutput } = require('./src/contracts/aiOutputContract');
 
+const prompt = buildAiRequestPrompt({ intake, catalogue, candidatePlan });
 const { text, modelVersion } = await generateCompletion({ prompt });
 const result = parseAiOutput(JSON.parse(text));
 ```
 
+Manual smoke: `node scripts/smokeAiGateway.js`
 | Env | Default | Notes |
 |-----|---------|-------|
 | `AI_PROVIDER` | `gemini` | `gemini` \| `groq` \| `openai_compatible` \| `mock` |

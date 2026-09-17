@@ -8,7 +8,8 @@ function createMockProvider({
   responseText,
 } = {}) {
   const defaultResponse = JSON.stringify({
-    reason: 'Mock provider: keep candidate plan structure with minor volume trim.',
+    reason:
+      'Mock provider: hypertrophy defaults (3–4 sets, RPE 7–9); keep candidate compounds.',
     adjustments: [
       {
         dayOfWeek: 'Monday',
@@ -16,8 +17,11 @@ function createMockProvider({
         action: 'KEEP',
         sets: 3,
         reps: '8-12',
-        rpe: 7,
-        restSeconds: 90,
+        formCue: 'Brace ribs down; control the eccentric.',
+        rpe: 8,
+        restSeconds: 120,
+        progressionCue:
+          'Increase weight next session if you hit the top of the rep range with 1–2 reps in reserve.',
       },
     ],
   });

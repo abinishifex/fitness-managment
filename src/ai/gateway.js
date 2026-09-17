@@ -2,14 +2,13 @@ const { env } = require('../config/env');
 const { createOpenAiCompatibleProvider } = require('./providers/openaiCompatible');
 const { createMockProvider } = require('./providers/mock');
 const { createGeminiProvider } = require('./providers/gemini');
+const {
+  GYMAI_SYSTEM_PROMPT,
+  buildAiRequestPrompt,
+} = require('./prompts/gymAi');
 
-const DEFAULT_SYSTEM_PROMPT = [
-  'You are a strength-training assistant for a gym personal trainer platform.',
-  'Respond with a single JSON object that matches the AI Output Contract:',
-  '{ "reason": string, "adjustments": [{ "dayOfWeek", "exerciseId", "action", "sets", "reps", "rpe?", "restSeconds?", "replaceExerciseId?" }] }.',
-  'action must be one of KEEP | SWAP | ADD | REMOVE.',
-  'Only use exercise IDs supplied in the user prompt. No markdown, no prose outside JSON.',
-].join(' ');
+/** GymAI research-backed system prompt (intake → plan columns). */
+const DEFAULT_SYSTEM_PROMPT = GYMAI_SYSTEM_PROMPT;
 
 /**
  * Resolve a concrete provider. Providers are swappable via AI_PROVIDER env:
@@ -121,6 +120,8 @@ async function generateCompletion({
 
 module.exports = {
   DEFAULT_SYSTEM_PROMPT,
+  GYMAI_SYSTEM_PROMPT,
+  buildAiRequestPrompt,
   createProvider,
   generateCompletion,
 };

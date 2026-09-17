@@ -15,8 +15,11 @@ const validPayload = {
       action: 'KEEP',
       sets: 4,
       reps: '6-8',
+      formCue: 'Tuck elbows ~45°; pause on chest.',
       rpe: 8,
       restSeconds: 120,
+      progressionCue:
+        'Increase weight next session if you hit the top of the rep range with 1–2 reps in reserve.',
     },
     {
       dayOfWeek: 2,
@@ -25,6 +28,10 @@ const validPayload = {
       action: 'SWAP',
       sets: 3,
       reps: '10-12',
+      rpe: 7,
+      restSeconds: 90,
+      substitutionNote:
+        'Landmine Press used in place of Overhead Press (shoulder note).',
     },
   ],
 };
@@ -34,6 +41,27 @@ describe('AI Output Contract (Section 8)', () => {
     const result = parseAiOutput(validPayload);
     assert.equal(result.success, true);
     assert.equal(result.data.adjustments.length, 2);
+  });
+
+  it('coerces string rpe / sets / restSeconds from the model', () => {
+    const result = parseAiOutput({
+      reason: 'Hypertrophy keep with numeric strings from the model.',
+      adjustments: [
+        {
+          dayOfWeek: 'Monday',
+          exerciseId: '507f1f77bcf86cd799439011',
+          action: 'KEEP',
+          sets: '3',
+          reps: '8-12',
+          rpe: '8',
+          restSeconds: '90',
+        },
+      ],
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.data.adjustments[0].rpe, 8);
+    assert.equal(result.data.adjustments[0].sets, 3);
+    assert.equal(result.data.adjustments[0].restSeconds, 90);
   });
 
   it('rejects missing reason', () => {
