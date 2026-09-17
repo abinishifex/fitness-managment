@@ -1,11 +1,14 @@
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   generateCompletion,
   createProvider,
   createMockProvider,
+  createGeminiProvider,
+  clearModelCooldowns,
 } = require('../src/ai');
 const { parseAiOutput } = require('../src/contracts/aiOutputContract');
+const { markCooldown } = require('../src/ai/providers/gemini');
 
 describe('AI Gateway', () => {
   it('generateCompletion returns text from the mock provider', async () => {
@@ -36,32 +39,204 @@ describe('AI Gateway', () => {
     assert.equal(provider.name, 'mock');
   });
 
-  it('createProvider("groq") fails without API key', () => {
+  it('createProvider("gemini") fails without API key', () => {
     assert.throws(
       () =>
         createProvider({
-          provider: 'groq',
+          provider: 'gemini',
           apiKey: '',
-          baseUrl: 'https://api.groq.com/openai/v1',
-          model: 'llama-3.3-70b-versatile',
+          model: 'gemini-3.6-flash',
         }),
       /AI_API_KEY/
     );
   });
 });
 
-describe('AI Gateway live (optional)', () => {
-  it('calls Groq when AI_API_KEY is set', { skip: !process.env.AI_API_KEY }, async () => {
-    const result = await generateCompletion({
-      prompt: [
-        'Return a minimal valid AI Output Contract JSON.',
-        'Use exerciseId "507f1f77bcf86cd799439011", action KEEP, Monday, sets 3, reps "8-12".',
-      ].join(' '),
+describe('Gemini model shifting', () => {
+  beforeEach(() => {
+    clearModelCooldowns();
+  });
+
+  it('shifts to the next model after a 429', async () => {
+    const calls = [];
+    const provider = createGeminiProvider({
+      apiKey: 'test-key',
+      models: ['gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+      cooldownMs: 60_000,
     });
 
-    assert.ok(result.text);
-    const json = JSON.parse(result.text);
-    const parsed = parseAiOutput(json);
-    assert.equal(parsed.success, true, JSON.stringify(parsed.error?.issues || parsed));
+    const originalFetch = global.fetch;
+    global.fetch = async (url, init) => {
+      const body = JSON.parse(init.body);
+      calls.push(body.model);
+
+      if (body.model === 'gemini-3.6-flash') {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: () => '1' },
+          json: async () => ({ error: { message: 'Resource exhausted' } }),
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({
+          model: body.model,
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  reason: 'ok',
+                  adjustments: [
+                    {
+                      dayOfWeek: 'Monday',
+                      exerciseId: '507f1f77bcf86cd799439011',
+                      action: 'KEEP',
+                      sets: 3,
+                      reps: '8-12',
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+      };
+    };
+
+    try {
+      const result = await provider.complete({
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      assert.equal(result.modelVersion, 'gemini-3.5-flash-lite');
+      assert.deepEqual(calls, ['gemini-3.6-flash', 'gemini-3.5-flash-lite']);
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
+
+  it('shifts past a retired (404) model', async () => {
+    const calls = [];
+    const provider = createGeminiProvider({
+      apiKey: 'test-key',
+      models: ['gemini-2.5-flash', 'gemini-3.6-flash'],
+    });
+
+    const originalFetch = global.fetch;
+    global.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      calls.push(body.model);
+
+      if (body.model === 'gemini-2.5-flash') {
+        return {
+          ok: false,
+          status: 404,
+          headers: { get: () => null },
+          json: async () => ({
+            error: {
+              message:
+                'This model models/gemini-2.5-flash is no longer available to new users.',
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({
+          model: body.model,
+          choices: [
+            {
+              message: {
+                content:
+                  '{"reason":"x","adjustments":[{"dayOfWeek":"Monday","exerciseId":"1","action":"KEEP","sets":1,"reps":"5"}]}',
+              },
+            },
+          ],
+        }),
+      };
+    };
+
+    try {
+      const result = await provider.complete({
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      assert.equal(result.modelVersion, 'gemini-3.6-flash');
+      assert.deepEqual(calls, ['gemini-2.5-flash', 'gemini-3.6-flash']);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('skips models still on cooldown', async () => {
+    markCooldown('gemini-3.6-flash', 60_000);
+
+    const calls = [];
+    const provider = createGeminiProvider({
+      apiKey: 'test-key',
+      models: ['gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+    });
+
+    const originalFetch = global.fetch;
+    global.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      calls.push(body.model);
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({
+          model: body.model,
+          choices: [
+            {
+              message: {
+                content:
+                  '{"reason":"x","adjustments":[{"dayOfWeek":"Monday","exerciseId":"1","action":"KEEP","sets":1,"reps":"5"}]}',
+              },
+            },
+          ],
+        }),
+      };
+    };
+
+    try {
+      const result = await provider.complete({
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      assert.equal(result.modelVersion, 'gemini-3.5-flash-lite');
+      assert.deepEqual(calls, ['gemini-3.5-flash-lite']);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+});
+
+describe('AI Gateway live (optional)', () => {
+  it(
+    'calls Gemini when AI_API_KEY is set',
+    { skip: !process.env.AI_API_KEY || process.env.AI_PROVIDER === 'mock' },
+    async () => {
+      const result = await generateCompletion({
+        prompt: [
+          'Return a minimal valid AI Output Contract JSON.',
+          'Use exerciseId "507f1f77bcf86cd799439011", action KEEP, Monday, sets 3, reps "8-12".',
+        ].join(' '),
+      });
+
+      assert.ok(result.text);
+      const json = JSON.parse(result.text);
+      const parsed = parseAiOutput(json);
+      assert.equal(
+        parsed.success,
+        true,
+        JSON.stringify(parsed.error?.issues || parsed)
+      );
+    }
+  );
 });

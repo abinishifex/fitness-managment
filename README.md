@@ -34,6 +34,10 @@ npm run dev
 
 Single entry point: `generateCompletion({ prompt })` from `src/ai`.
 
+Default provider is **Gemini**. On HTTP 429 (quota), 404 (retired model), or
+503 (overload) the gateway cools that model down and shifts to the next entry
+in `AI_MODELS`.
+
 ```js
 const { generateCompletion } = require('./src/ai');
 const { parseAiOutput } = require('./src/contracts/aiOutputContract');
@@ -44,10 +48,11 @@ const result = parseAiOutput(JSON.parse(text));
 
 | Env | Default | Notes |
 |-----|---------|-------|
-| `AI_PROVIDER` | `groq` | `groq` \| `openai_compatible` \| `mock` |
-| `AI_API_KEY` | — | Required for live calls |
-| `AI_MODEL` | `llama-3.3-70b-versatile` | Llama on Groq |
-| `AI_BASE_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible hosts |
+| `AI_PROVIDER` | `gemini` | `gemini` \| `groq` \| `openai_compatible` \| `mock` |
+| `AI_API_KEY` | — | Gemini API key from Google AI Studio |
+| `AI_MODEL` | `gemini-3.6-flash` | Preferred first model |
+| `AI_MODELS` | `gemini-3.6-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3.1-flash-lite` | Shift order on limit / unavailable |
+| `AI_BASE_URL` | Gemini OpenAI-compat URL | Override only if needed |
 | `AI_TIMEOUT_MS` | `30000` | Per-request abort |
 
-CI uses the mock provider (no network). Set `AI_API_KEY` locally to exercise the live Groq path.
+CI uses the mock provider (no network). Set `AI_API_KEY` locally to exercise live Gemini.

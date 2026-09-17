@@ -73,9 +73,23 @@ function createOpenAiCompatibleProvider({
             JSON.stringify(payload) ||
             res.statusText;
           const err = new Error(`${name} API error (${res.status}): ${detail}`);
+          err.details = payload;
+
+          err.httpStatus = res.status;
+
+          if (res.status === 429) {
+            err.status = 429;
+            err.code = 'AI_RATE_LIMIT';
+            const retryHeader = res.headers.get('retry-after');
+            const retrySeconds = retryHeader ? Number(retryHeader) : NaN;
+            err.retryAfterMs = Number.isFinite(retrySeconds)
+              ? retrySeconds * 1000
+              : undefined;
+            throw err;
+          }
+
           err.status = res.status >= 500 ? 502 : 400;
           err.code = 'AI_PROVIDER_ERROR';
-          err.details = payload;
           throw err;
         }
 

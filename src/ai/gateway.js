@@ -1,6 +1,7 @@
 const { env } = require('../config/env');
 const { createOpenAiCompatibleProvider } = require('./providers/openaiCompatible');
 const { createMockProvider } = require('./providers/mock');
+const { createGeminiProvider } = require('./providers/gemini');
 
 const DEFAULT_SYSTEM_PROMPT = [
   'You are a strength-training assistant for a gym personal trainer platform.',
@@ -12,19 +13,32 @@ const DEFAULT_SYSTEM_PROMPT = [
 
 /**
  * Resolve a concrete provider. Providers are swappable via AI_PROVIDER env:
- *   - groq (default) — Llama via Groq OpenAI-compatible API
+ *   - gemini (default) — Google Gemini with model shifting on rate limits
+ *   - groq — Llama via Groq OpenAI-compatible API
  *   - openai_compatible — any host using AI_BASE_URL / AI_MODEL / AI_API_KEY
  *   - mock — offline fixture for tests
  */
 function createProvider(overrides = {}) {
-  const providerName = (overrides.provider || env.aiProvider || 'groq').toLowerCase();
+  const providerName = (overrides.provider || env.aiProvider || 'gemini').toLowerCase();
   const apiKey = overrides.apiKey ?? env.aiApiKey;
   const baseUrl = overrides.baseUrl ?? env.aiBaseUrl;
   const model = overrides.model ?? env.aiModel;
+  const models = overrides.models ?? env.aiModels;
   const timeoutMs = overrides.timeoutMs ?? env.aiTimeoutMs;
 
   if (providerName === 'mock') {
     return createMockProvider({ model });
+  }
+
+  if (providerName === 'gemini') {
+    return createGeminiProvider({
+      apiKey,
+      baseUrl:
+        baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai',
+      model: model || 'gemini-3.6-flash',
+      models,
+      timeoutMs,
+    });
   }
 
   if (providerName === 'groq' || providerName === 'openai_compatible') {
@@ -40,7 +54,7 @@ function createProvider(overrides = {}) {
   }
 
   throw new Error(
-    `Unknown AI_PROVIDER "${providerName}". Use groq | openai_compatible | mock.`
+    `Unknown AI_PROVIDER "${providerName}". Use gemini | groq | openai_compatible | mock.`
   );
 }
 
