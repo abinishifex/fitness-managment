@@ -29,3 +29,25 @@ npm run dev
 ## Health
 
 `GET /health` → `{ success: true, data: { status: "ok" } }`
+
+## AI Gateway (Dev2)
+
+Single entry point: `generateCompletion({ prompt })` from `src/ai`.
+
+```js
+const { generateCompletion } = require('./src/ai');
+const { parseAiOutput } = require('./src/contracts/aiOutputContract');
+
+const { text, modelVersion } = await generateCompletion({ prompt });
+const result = parseAiOutput(JSON.parse(text));
+```
+
+| Env | Default | Notes |
+|-----|---------|-------|
+| `AI_PROVIDER` | `groq` | `groq` \| `openai_compatible` \| `mock` |
+| `AI_API_KEY` | — | Required for live calls |
+| `AI_MODEL` | `llama-3.3-70b-versatile` | Llama on Groq |
+| `AI_BASE_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible hosts |
+| `AI_TIMEOUT_MS` | `30000` | Per-request abort |
+
+CI uses the mock provider (no network). Set `AI_API_KEY` locally to exercise the live Groq path.
