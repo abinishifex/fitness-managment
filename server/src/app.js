@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const requestLogger = require('./middleware/requestLogger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
@@ -18,7 +18,7 @@ function createApp() {
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);
 
-  app.get('/api/health', (req, res) => {
+  const healthHandler = (req, res) => {
     res.json({
       success: true,
       data: {
@@ -27,7 +27,11 @@ function createApp() {
         timestamp: new Date().toISOString(),
       },
     });
-  });
+  };
+
+  // Keep both paths: main used /health; auth API uses /api/health
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
 
   // Mount routes
   app.use('/api/auth', authRoutes);
