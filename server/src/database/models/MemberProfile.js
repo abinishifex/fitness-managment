@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 
-// Fixed vocab lists — must stay identical to what Developer 2's AI prompts use.
-// See Schema Doc Section 9 ("Fixed Enum Value Lists").
 const EQUIPMENT_VALUES = [
   'barbell', 'dumbbell', 'machine', 'cable_machine', 'bodyweight',
   'resistance_bands', 'kettlebell', 'bench', 'pull_up_bar', 'none'

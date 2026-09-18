@@ -1,6 +1,4 @@
-// Central import point for all Mongoose models.
-// Load order matters for Mongoose ref resolution — base collections first,
-// then collections that reference them.
+
 
 const User = require('./User');
 const MemberProfile = require('./MemberProfile');

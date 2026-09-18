@@ -8,8 +8,8 @@ require('dotenv/config');
 const {
   generateCompletion,
   buildAiRequestPrompt,
-} = require('../src/ai');
-const { parseAiOutput } = require('../src/contracts/aiOutputContract');
+} = require('../server/src/ai');
+const { parseAiOutput } = require('../server/src/contracts/aiOutputContract');
 
 const sampleIntake = {
   age: 28,
