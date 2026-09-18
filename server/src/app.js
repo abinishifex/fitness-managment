@@ -1,6 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const requestLogger = require('./middleware/requestLogger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const authRoutes = require('./routes/authRoutes');
 
 /**
  * Build the Express app (no listen / no DB connect).
@@ -14,7 +15,7 @@ function createApp() {
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);
 
-  app.get('/health', (req, res) => {
+  app.get('/api/health', (req, res) => {
     res.json({
       success: true,
       data: {
@@ -25,7 +26,10 @@ function createApp() {
     });
   });
 
-  // API routers land here in Day 1–2 (auth, profile, exercises, workouts…)
+  // Mount auth routes
+  app.use('/api/auth', authRoutes);
+
+  // Placeholder for other API routes
   app.use('/api', (req, res) => {
     res.status(501).json({
       success: false,
