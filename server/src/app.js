@@ -36,6 +36,8 @@ function createApp() {
       error: { message: 'API routes not mounted yet' },
     });
   });
+
+  
   app.use(notFoundHandler);
   app.use(errorHandler);
 
