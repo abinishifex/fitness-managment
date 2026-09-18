@@ -22,19 +22,24 @@ async function connectDB() {
     await mongoose.syncIndexes();
     console.log('✅ Indexes synced');
   } catch (err) {
+    console.error('❌ MongoDB connection error:', err.message);
+
     const isNetworkErr =
       err.message.includes('ECONNREFUSED') ||
       err.message.includes('querySrv') ||
       err.message.includes('ETIMEOUT') ||
-      err.message.includes('getaddrinfo');
+      err.message.includes('getaddrinfo') ||
+      err.message.includes('IP') ||
+      err.message.includes('whitelist');
 
     if (isNetworkErr) {
-      console.error('❌ MongoDB connection error:', err.message);
-      console.error(
-        '👉 Go to MongoDB Atlas → Network Access → Add your IP or allow 0.0.0.0/0'
-      );
-    } else {
-      console.error('❌ MongoDB connection error:', err.message);
+      console.error('\n🔒 This looks like an Atlas IP whitelist issue.');
+      console.error('👉 Steps to fix:');
+      console.error('   1. Go to https://cloud.mongodb.com');
+      console.error('   2. Navigate to: Security → Network Access');
+      console.error('   3. Click "Add IP Address" → "Allow Access from Anywhere" (0.0.0.0/0)');
+      console.error('   4. Wait 30-60 seconds for changes to propagate');
+      console.error('   5. Restart this server\n');
     }
 
     process.exit(1);
