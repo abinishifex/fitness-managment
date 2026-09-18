@@ -1,8 +1,4 @@
 const mongoose = require('mongoose');
-const MemberProfile = require('./MemberProfile');
-const WorkoutTemplate = require('./WorkoutTemplate');
-const Exercise = require('./Exercise');
-
 
 const planExerciseSchema = new mongoose.Schema({
   exerciseId: {

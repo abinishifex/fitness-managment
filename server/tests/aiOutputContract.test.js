@@ -4,7 +4,7 @@ const {
   parseAiOutput,
   aiOutputJsonSchema,
   ADJUSTMENT_ACTIONS,
-} = require('./contracts/aiOutputContract');
+} = require('../src/contracts/aiOutputContract');
 
 const validPayload = {
   reason: 'Keep compound lifts; swap machine fly for DB fly given available equipment.',

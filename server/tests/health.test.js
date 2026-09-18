@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createApp } = require('./app');
+const { createApp } = require('../src/app');
 
 describe('health endpoint', () => {
   it('GET /health returns ok', async () => {
