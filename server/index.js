@@ -1,6 +1,6 @@
-const { createApp } = require('./src/app');
 const { env } = require('./src/config/env');
 const connectDB = require('./src/database/connectDB');
+const { createApp } = require('./src/app');
 
 async function main() {
   await connectDB();

@@ -1,14 +1,15 @@
 const mongoose = require('mongoose');
+const MemberProfile = require('./MemberProfile');
+const WorkoutTemplate = require('./WorkoutTemplate');
+const Exercise = require('./Exercise');
 
-// 3b. Nested: days[].exercises[]
-// Shape mirrors the "adjustments" array in the AI Output Contract (Backend Spec, Section 8).
+
 const planExerciseSchema = new mongoose.Schema({
   exerciseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Exercise',
     required: true
-    // Note: "approved" status is enforced by the Safety & Validation Engine at write time,
-    // not by this schema — a ref alone can't guarantee isApproved === true.
+
   },
   action: {
     type: String,
@@ -69,5 +70,6 @@ const workoutPlanSchema = new mongoose.Schema({
 
 // Speeds up the common "give me this member's current active plan" query.
 workoutPlanSchema.index({ memberId: 1, isActive: 1 });
+
 
 module.exports = mongoose.model('WorkoutPlan', workoutPlanSchema);
