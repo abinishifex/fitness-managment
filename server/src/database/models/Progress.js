@@ -22,9 +22,5 @@ const progressSchema = new mongoose.Schema({
   completionRate: { type: Number } // percentage
 }, { timestamps: true });
 
-// IMPORTANT: this collection is derived/aggregated only.
-// It must be written exclusively by a backend function (e.g. updateProgressAfterLog())
-// that runs after a WorkoutLog write succeeds. It should never be writable directly
-// by the client or by the AI Gateway — enforce this at the route/controller layer,
-// since Mongoose itself won't stop a direct write.
+
 module.exports = mongoose.model('Progress', progressSchema);

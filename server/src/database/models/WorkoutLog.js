@@ -27,9 +27,7 @@ const workoutLogSchema = new mongoose.Schema({
   },
   setsCompleted: { type: [completedSetSchema], required: true },
 
-  // --- Offline sync fields (Doc 1, Sections 4.2 & 5) ---
-  // This single unique field is what prevents duplicate inserts when the offline
-  // client retries a queued sync after a dropped connection.
+ 
   mutationId: { type: String, required: true, unique: true },
   syncState: {
     type: String,
@@ -47,5 +45,7 @@ const workoutLogSchema = new mongoose.Schema({
 
 // Supports fast "history for this member, most recent first" queries used by progress tracking.
 workoutLogSchema.index({ memberId: 1, clientTimestamp: -1 });
+
+
 
 module.exports = mongoose.model('WorkoutLog', workoutLogSchema);
