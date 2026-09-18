@@ -29,7 +29,7 @@ async function register(req, res, next) {
     // Validate input
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
-      const errors = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      const errors = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
       throw createError(400, 'Validation failed', errors);
     }
 
@@ -85,7 +85,7 @@ async function login(req, res, next) {
     // Validate input
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      const errors = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      const errors = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
       throw createError(400, 'Validation failed', errors);
     }
 
@@ -157,7 +157,7 @@ async function passwordResetStub(req, res, next) {
     // Validate input
     const parsed = passwordResetSchema.safeParse(req.body);
     if (!parsed.success) {
-      const errors = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+      const errors = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
       throw createError(400, 'Validation failed', errors);
     }
 

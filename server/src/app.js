@@ -2,6 +2,7 @@
 const requestLogger = require('./middleware/requestLogger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 
 /**
  * Build the Express app (no listen / no DB connect).
@@ -26,8 +27,9 @@ function createApp() {
     });
   });
 
-  // Mount auth routes
+  // Mount routes
   app.use('/api/auth', authRoutes);
+  app.use('/api/profile', profileRoutes);
 
   // Placeholder for other API routes
   app.use('/api', (req, res) => {
@@ -37,7 +39,6 @@ function createApp() {
     });
   });
 
-  
   app.use(notFoundHandler);
   app.use(errorHandler);
 
