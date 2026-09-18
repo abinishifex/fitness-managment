@@ -1,12 +1,13 @@
 ﻿const jwt = require('jsonwebtoken');
+const { User } = require('../database/models');
 const { env } = require('../config/env');
 const { createError } = require('./errorHandler');
 
 /**
  * Middleware: require valid JWT token
- * Attaches req.userId and req.role from token payload
+ * Attaches req.userId and req.role from the live user record (not stale token claims)
  */
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -26,9 +27,17 @@ function requireAuth(req, res, next) {
     // Verify token
     const decoded = jwt.verify(token, env.jwtSecret);
 
-    // Attach userId and role to request
-    req.userId = decoded.userId;
-    req.role = decoded.role;
+    const user = await User.findById(decoded.userId).select('_id role isActive');
+    if (!user) {
+      throw createError(401, 'Invalid or expired token');
+    }
+    if (!user.isActive) {
+      throw createError(403, 'Account is deactivated');
+    }
+
+    // Attach userId and role from DB so role changes take effect immediately
+    req.userId = user._id.toString();
+    req.role = user.role;
 
     next();
   } catch (err) {

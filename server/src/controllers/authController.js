@@ -46,11 +46,20 @@ async function register(req, res, next) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = await User.create({
-      email: normalizedEmail,
-      passwordHash,
-      role: 'member', // default
-    });
+    let user;
+    try {
+      user = await User.create({
+        email: normalizedEmail,
+        passwordHash,
+        role: 'member', // default
+      });
+    } catch (err) {
+      // Concurrent register race: unique index violation → same as existing email
+      if (err && (err.code === 11000 || err.code === '11000')) {
+        throw createError(409, 'Email already registered');
+      }
+      throw err;
+    }
 
     // Generate JWT
     const token = jwt.sign(
@@ -95,13 +104,12 @@ async function login(req, res, next) {
     // Look up user
     const user = await User.findOne({ email: normalizedEmail });
 
-    // Generic 401 whether user not found OR password mismatch (prevents user enumeration)
-    if (!user) {
-      throw createError(401, 'Invalid email or password');
-    }
+    // Always run bcrypt.compare so missing users don't respond faster than bad passwords
+    const hash = user?.passwordHash || '$2a$12$invalidhashinvalidhashinvalidha';
+    const isMatch = await bcrypt.compare(password, hash);
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
+    // Generic 401 whether user not found OR password mismatch (prevents user enumeration)
+    if (!user || !isMatch) {
       throw createError(401, 'Invalid email or password');
     }
 
