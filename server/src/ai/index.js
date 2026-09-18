@@ -1,0 +1,38 @@
+/**
+ * Public AI module surface.
+ * Day 3 Decision Engine should import `generateCompletion` from here,
+ * then validate with `parseAiOutput` from contracts/aiOutputContract.
+ */
+const {
+  generateCompletion,
+  createProvider,
+  DEFAULT_SYSTEM_PROMPT,
+  GYMAI_SYSTEM_PROMPT,
+  buildAiRequestPrompt,
+} = require('./gateway');
+const { createMockProvider } = require('./providers/mock');
+const { createOpenAiCompatibleProvider } = require('./providers/openaiCompatible');
+const {
+  createGeminiProvider,
+  clearModelCooldowns,
+} = require('./providers/gemini');
+const {
+  normalizeIntake,
+  recommendSplit,
+  GOAL_PRESCRIPTION,
+} = require('./prompts/gymAi');
+
+module.exports = {
+  generateCompletion,
+  createProvider,
+  createMockProvider,
+  createOpenAiCompatibleProvider,
+  createGeminiProvider,
+  clearModelCooldowns,
+  DEFAULT_SYSTEM_PROMPT,
+  GYMAI_SYSTEM_PROMPT,
+  buildAiRequestPrompt,
+  normalizeIntake,
+  recommendSplit,
+  GOAL_PRESCRIPTION,
+};
