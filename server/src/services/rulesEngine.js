@@ -1,7 +1,6 @@
 ﻿const { WorkoutTemplate } = require('../database/models');
 const {
   FITNESS_GOAL_VALUES,
-  TRAINING_EXPERIENCE_VALUES,
 } = require('../config/constants');
 
 /**

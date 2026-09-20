@@ -3,7 +3,7 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const { generateCandidatePlan, GOAL_DEFAULTS } = require('../src/services/rulesEngine');
-const { WorkoutTemplate, MemberProfile } = require('../src/database/models');
+const { WorkoutTemplate } = require('../src/database/models');
 const { seedWorkoutTemplates } = require('../src/database/seedWorkoutTemplates');
 
 // Test database connection
