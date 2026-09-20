@@ -55,4 +55,13 @@ describe('GymAI research prompts', () => {
     assert.match(prompt, /upper_lower|full_body|push_pull_legs/);
     assert.ok(GOAL_PRESCRIPTION.muscle_gain.rpe);
   });
+
+  it('includes history when provided to buildAiRequestPrompt', () => {
+    const prompt = buildAiRequestPrompt({
+      intake: { fitnessGoal: 'strength', trainingDaysPerWeek: 3 },
+      catalogue: [{ id: '1', name: 'Squat' }],
+      history: [{ dayOfWeek: 'Monday', exerciseId: '1', setsCompleted: [] }],
+    });
+    assert.match(prompt, /RECENT WORKOUT HISTORY/);
+  });
 });
