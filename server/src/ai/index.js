@@ -2,6 +2,7 @@
  * Public AI module surface.
  * Day 3 Decision Engine: `runAiDecision` builds a structured prompt, calls
  * `generateCompletion`, validates with `parseAiOutput`, and persists AiDecision.
+ * Day 4 Fallback: `runDecisionWithFallback` serves a rules-only plan when AI fails.
  */
 const {
   generateCompletion,
@@ -31,6 +32,12 @@ const {
   parseGatewayJson,
   extractJsonText,
 } = require('./decisionEngine');
+const {
+  FALLBACK_REASON,
+  isTimeoutError,
+  buildRulesOnlyPlan,
+  runDecisionWithFallback,
+} = require('./fallbackPlan');
 
 module.exports = {
   generateCompletion,
@@ -53,4 +60,8 @@ module.exports = {
   loadDecisionContext,
   parseGatewayJson,
   extractJsonText,
+  FALLBACK_REASON,
+  isTimeoutError,
+  buildRulesOnlyPlan,
+  runDecisionWithFallback,
 };
