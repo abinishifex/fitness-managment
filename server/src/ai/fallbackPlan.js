@@ -159,8 +159,8 @@ async function runDecisionWithFallback(input = {}) {
     throw err;
   }
 
-  /** @type {Awaited<ReturnType<typeof runAiDecision>>|null} */
-  let ai = null;
+  /** @type {Awaited<ReturnType<typeof runAiDecision>>|undefined} */
+  let ai;
   /** @type {string|null} */
   let fallbackReason = null;
   /** @type {string|null} */
