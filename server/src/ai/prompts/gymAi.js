@@ -143,12 +143,91 @@ function recommendSplit(intake) {
 }
 
 /**
+ * Map a MemberProfile (or lean doc) into GymAI intake fields.
+ *
+ * @param {Record<string, unknown>} profile
+ * @param {{ weekNumber?: number, preferredSplit?: string, cardioInclusion?: boolean }} [overrides]
+ */
+function profileToIntake(profile = {}, overrides = {}) {
+  return normalizeIntake({
+    age: profile.age,
+    sex: profile.sex,
+    fitnessGoal: profile.fitnessGoal,
+    trainingExperience: profile.trainingExperience,
+    trainingDaysPerWeek: profile.trainingDaysPerWeek,
+    sessionDurationMinutes: profile.sessionDurationMinutes,
+    equipmentAvailable: profile.equipmentAvailable,
+    priorityMuscleGroup: profile.priorityMuscleGroup,
+    limitations: profile.limitations,
+    weekNumber: overrides.weekNumber,
+    preferredSplit: overrides.preferredSplit,
+    cardioInclusion: overrides.cardioInclusion,
+  });
+}
+
+/**
+ * Flatten Exercise docs / seed rows into catalogue entries the model may cite.
+ *
+ * @param {Array<Record<string, unknown>>} exercises
+ */
+function normalizeCatalog(exercises = []) {
+  return (exercises || []).map((ex) => {
+    const id = String(ex.id || ex._id || ex.exerciseId || '');
+    const primary =
+      (Array.isArray(ex.primaryMuscles) && ex.primaryMuscles[0]) ||
+      ex.muscleGroup ||
+      null;
+    const equipment = Array.isArray(ex.equipmentRequired)
+      ? ex.equipmentRequired
+      : ex.equipment
+        ? [ex.equipment]
+        : [];
+
+    return {
+      id,
+      name: ex.name || ex.slug || id,
+      muscleGroup: primary,
+      primaryMuscles: ex.primaryMuscles || (primary ? [primary] : []),
+      equipment,
+      movementPattern: ex.movementPattern || null,
+      type: ex.type || null,
+      difficulty: ex.difficulty || null,
+      contraindications: ex.contraindications || [],
+    };
+  });
+}
+
+/**
+ * Compact recent WorkoutLog rows for the prompt (most recent first, capped).
+ *
+ * @param {Array<Record<string, unknown>>} logs
+ * @param {{ limit?: number }} [opts]
+ */
+function summarizeHistory(logs = [], { limit = 20 } = {}) {
+  return (logs || []).slice(0, limit).map((log) => {
+    const sets = (log.setsCompleted || []).map((s) => ({
+      set: s.setNumber,
+      reps: s.reps,
+      weightKg: s.weightKg,
+    }));
+    return {
+      dayOfWeek: log.dayOfWeek,
+      exerciseId: String(log.exerciseId || ''),
+      setsCompleted: sets,
+      sessionCompleted: Boolean(log.sessionCompleted),
+      at: log.clientTimestamp || log.createdAt || null,
+    };
+  });
+}
+
+/**
  * Build the user prompt for generateCompletion from intake + catalogue + candidate plan.
  *
  * @param {{
  *   intake: Record<string, unknown>,
- *   catalogue?: Array<{ id: string, name: string, equipment?: string, muscleGroup?: string, movementPattern?: string }>,
+ *   catalogue?: Array<{ id: string, name: string, equipment?: string|string[], muscleGroup?: string, movementPattern?: string }>,
  *   candidatePlan?: unknown,
+ *   history?: unknown,
  *   extraInstructions?: string,
  * }} args
  * @returns {string}
@@ -157,6 +236,7 @@ function buildAiRequestPrompt({
   intake,
   catalogue = [],
   candidatePlan = null,
+  history = null,
   extraInstructions = '',
 } = {}) {
   const normalized = normalizeIntake(intake);
@@ -179,9 +259,20 @@ function buildAiRequestPrompt({
     '',
     'CANDIDATE PLAN (rules engine draft — adjust with KEEP/SWAP/ADD/REMOVE):',
     JSON.stringify(candidatePlan, null, 2),
-    '',
-    'Return AI Output Contract JSON. Include rpe + restSeconds + formCue + progressionCue on each row; set substitutionNote for injury-driven swaps.',
   ];
+
+  if (history != null) {
+    lines.push(
+      '',
+      'RECENT WORKOUT HISTORY (most recent first — use for progression / deload cues):',
+      JSON.stringify(history, null, 2)
+    );
+  }
+
+  lines.push(
+    '',
+    'Return AI Output Contract JSON. Include rpe + restSeconds + formCue + progressionCue on each row; set substitutionNote for injury-driven swaps.'
+  );
 
   if (extraInstructions) {
     lines.push('', extraInstructions);
@@ -190,10 +281,68 @@ function buildAiRequestPrompt({
   return lines.join('\n');
 }
 
+/**
+ * Day 3 prompt builder: profile + history + catalog + rules → structured prompt.
+ *
+ * `rules` is the deterministic rules-engine draft (candidate plan). Dev1 owns
+ * that engine; Dev2 only serializes it into the AI request.
+ *
+ * @param {{
+ *   profile: Record<string, unknown>,
+ *   history?: Array<Record<string, unknown>>,
+ *   catalog?: Array<Record<string, unknown>>,
+ *   rules?: unknown,
+ *   weekNumber?: number,
+ *   preferredSplit?: string,
+ *   cardioInclusion?: boolean,
+ *   extraInstructions?: string,
+ * }} args
+ * @returns {{ prompt: string, intake: Record<string, unknown>, catalogue: object[], historySummary: object[] }}
+ */
+function buildStructuredPrompt({
+  profile,
+  history = [],
+  catalog = [],
+  rules = null,
+  weekNumber,
+  preferredSplit,
+  cardioInclusion,
+  extraInstructions = '',
+} = {}) {
+  if (!profile || typeof profile !== 'object') {
+    const err = new Error('buildStructuredPrompt requires a member profile');
+    err.status = 400;
+    err.code = 'AI_BAD_REQUEST';
+    throw err;
+  }
+
+  const intake = profileToIntake(profile, {
+    weekNumber,
+    preferredSplit,
+    cardioInclusion,
+  });
+  const catalogue = normalizeCatalog(catalog);
+  const historySummary = summarizeHistory(history);
+
+  const prompt = buildAiRequestPrompt({
+    intake,
+    catalogue,
+    candidatePlan: rules,
+    history: historySummary,
+    extraInstructions,
+  });
+
+  return { prompt, intake, catalogue, historySummary };
+}
+
 module.exports = {
   GYMAI_SYSTEM_PROMPT,
   GOAL_PRESCRIPTION,
   normalizeIntake,
   recommendSplit,
+  profileToIntake,
+  normalizeCatalog,
+  summarizeHistory,
   buildAiRequestPrompt,
+  buildStructuredPrompt,
 };

@@ -41,6 +41,7 @@ in `AI_MODELS`.
 Request/response follow the GymAI exercise-science research doc:
 - System prompt: split selection, goal→sets/reps/rest/RPE, weekly volume, injury substitutions, deload
 - User prompt builder: `buildAiRequestPrompt({ intake, catalogue, candidatePlan })`
+- Day 3 structured builder: `buildStructuredPrompt({ profile, history, catalog, rules })`
 - Contract columns: sets/reps, restSeconds, rpe (coerced), formCue, progressionCue, substitutionNote
 
 ```js
@@ -53,6 +54,29 @@ const result = parseAiOutput(JSON.parse(text));
 ```
 
 Manual smoke: `node scripts/smokeAiGateway.js`
+
+## AI Decision Engine (Day 3 / Dev2)
+
+`runAiDecision` builds a structured prompt from **profile + history + catalog +
+rules**, calls the gateway, validates against the Day-1 AI Output Contract, and
+persists an `AiDecision` row (pass or fail recorded in `validationResult`).
+
+```js
+const { runAiDecision, createMockProvider } = require('./src/ai');
+
+const result = await runAiDecision({
+  memberId,
+  rules: candidatePlanFromRulesEngine, // Dev1 Day 3
+  // optional overrides — otherwise loaded from Mongo:
+  // profile, history, catalog,
+  provider: createMockProvider(), // or omit for live AI_PROVIDER
+});
+
+// result.validationResult.passed, result.parsed, result.decision
+```
+
+Manual smoke: `node scripts/smokeDecisionEngine.js`
+
 | Env | Default | Notes |
 |-----|---------|-------|
 | `AI_PROVIDER` | `gemini` | `gemini` \| `groq` \| `openai_compatible` \| `mock` |

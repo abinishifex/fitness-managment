@@ -5,6 +5,7 @@ const { createGeminiProvider } = require('./providers/gemini');
 const {
   GYMAI_SYSTEM_PROMPT,
   buildAiRequestPrompt,
+  buildStructuredPrompt,
 } = require('./prompts/gymAi');
 
 /** GymAI research-backed system prompt (intake → plan columns). */
@@ -122,6 +123,7 @@ module.exports = {
   DEFAULT_SYSTEM_PROMPT,
   GYMAI_SYSTEM_PROMPT,
   buildAiRequestPrompt,
+  buildStructuredPrompt,
   createProvider,
   generateCompletion,
 };
