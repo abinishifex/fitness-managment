@@ -1,4 +1,4 @@
-﻿const { WorkoutTemplate } = require('../database/models');
+﻿const { WorkoutTemplate, Exercise } = require('../database/models');
 const {
   FITNESS_GOAL_VALUES,
 } = require('../config/constants');
@@ -39,16 +39,113 @@ const GOAL_DEFAULTS = {
 };
 
 /**
+ * Convert rest interval strings to seconds (midpoint)
+ * @param {string} restString - e.g. "2-3 min", "60-90 sec"
+ * @returns {number} seconds
+ */
+function convertRestToSeconds(restString) {
+  const mapping = {
+    '3-5 min': 240,
+    '2-3 min': 150,
+    '60-90 sec': 75,
+    '45-75 sec': 60,
+    '30-60 sec': 45,
+  };
+  
+  return mapping[restString] || 90; // Default fallback
+}
+
+/**
+ * Map user-facing muscle focus strings to primaryMuscles values in Exercise schema
+ * @param {string} muscleFocus - e.g. "Chest, Triceps, Front Delts"
+ * @returns {string[]} normalized muscle tags
+ */
+function parseMuscleFocus(muscleFocus) {
+  if (!muscleFocus) return [];
+  
+  const mapping = {
+    'chest': 'chest',
+    'back': 'back',
+    'lats': 'lats',
+    'shoulders': 'shoulders',
+    'front delts': 'front_delts',
+    'side delts': 'side_delts',
+    'rear delts': 'rear_delts',
+    'biceps': 'biceps',
+    'triceps': 'triceps',
+    'quads': 'quads',
+    'hamstrings': 'hamstrings',
+    'glutes': 'glutes',
+    'calves': 'calves',
+    'core': 'core',
+    'forearms': 'forearms',
+    'traps': 'traps',
+    'upper back': 'upper_back',
+  };
+  
+  const normalized = [];
+  const lowerFocus = muscleFocus.toLowerCase();
+  
+  for (const [key, value] of Object.entries(mapping)) {
+    if (lowerFocus.includes(key)) {
+      normalized.push(value);
+    }
+  }
+  
+  return normalized.length > 0 ? normalized : ['full_body'];
+}
+
+/**
+ * Select exercises for a given day
+ * @param {string[]} muscleFocusArray - normalized muscle tags
+ * @param {string[]} equipmentAvailable - from memberProfile
+ * @param {string[]} limitations - from memberProfile (contraindications)
+ * @param {string} experienceLevel - beginner/intermediate/advanced
+ * @returns {Promise<Object[]>} array of Exercise documents
+ */
+async function selectExercises(muscleFocusArray, equipmentAvailable, limitations, experienceLevel) {
+  // Query: primaryMuscles intersects muscle focus, equipment available, no contraindications overlap
+  const query = {
+    isApproved: true,
+    primaryMuscles: { $in: muscleFocusArray },
+    equipmentRequired: { $not: { $elemMatch: { $nin: equipmentAvailable } } },
+  };
+  
+  // Exclude exercises with contraindications that match the user's limitations
+  if (limitations && limitations.length > 0) {
+    query.contraindications = { $not: { $elemMatch: { $in: limitations } } };
+  }
+  
+  // Prefer exercises at or below user's experience level
+  const difficultyOrder = {
+    'beginner': ['beginner'],
+    'intermediate': ['beginner', 'intermediate'],
+    'advanced': ['beginner', 'intermediate', 'advanced'],
+  };
+  query.difficulty = { $in: difficultyOrder[experienceLevel] || ['beginner', 'intermediate'] };
+  
+  const exercises = await Exercise.find(query).limit(20); // Limit to 20 to avoid overload
+  
+  return exercises;
+}
+
+/**
  * Generate a candidate workout plan based on member profile
  * @param {Object} memberProfile - MemberProfile document
- * @returns {Promise<Object>} Candidate plan structure
+ * @returns {Promise<Object>} Candidate plan structure with populated exercises
  */
 async function generateCandidatePlan(memberProfile) {
   if (!memberProfile) {
     throw new Error('memberProfile is required');
   }
 
-  const { trainingDaysPerWeek, trainingExperience, fitnessGoal } = memberProfile;
+  const {
+    trainingDaysPerWeek,
+    trainingExperience,
+    fitnessGoal,
+    equipmentAvailable,
+    limitations,
+  } = memberProfile;
 
   // Validate fitnessGoal
   if (!FITNESS_GOAL_VALUES.includes(fitnessGoal)) {
@@ -115,26 +212,90 @@ async function generateCandidatePlan(memberProfile) {
     rest: defaultRest,
     rpe: goalDefaults.rpe,
   };
+  
+  // Convert rest to seconds for use in exercises
+  const defaultRestSeconds = convertRestToSeconds(defaultRest);
 
   // Step 4: Build day structure from template (or generate minimal default)
   const days = [];
+  
   if (matchedTemplate && matchedTemplate.defaultStructure) {
-    matchedTemplate.defaultStructure.forEach((day, index) => {
+    for (const [index, day] of matchedTemplate.defaultStructure.entries()) {
+      const dayOfWeek = typeof day.dayOfWeek === 'string' ? day.dayOfWeek : `Day ${index + 1}`;
+      const muscleFocus = day.muscleGroups.join(', ');
+      const muscleFocusArray = parseMuscleFocus(muscleFocus);
+      
+      // Select exercises for this day
+      const availableExercises = await selectExercises(
+        muscleFocusArray,
+        equipmentAvailable || [],
+        limitations || [],
+        trainingExperience
+      );
+      
+      // CRITICAL: If no exercises found, stop immediately
+      if (availableExercises.length === 0) {
+        throw new Error(
+          `No exercises found for day "${dayOfWeek}" with muscle focus "${muscleFocus}". ` +
+          `Check equipment availability and contraindications.`
+        );
+      }
+      
+      // Select 4-6 exercises (or fewer if not enough available)
+      const exerciseCount = Math.min(availableExercises.length, Math.floor(Math.random() * 3) + 4); // 4-6
+      const selectedExercises = availableExercises.slice(0, exerciseCount);
+      
+      // Build exercise objects with action, sets, reps, rpe, restSeconds
+      const exercises = selectedExercises.map((exercise) => ({
+        exerciseId: exercise._id,
+        action: 'KEEP',
+        sets: setsRepsRestRpeDefaults.sets,
+        reps: setsRepsRestRpeDefaults.reps,
+        rpe: setsRepsRestRpeDefaults.rpe,
+        restSeconds: defaultRestSeconds,
+      }));
+      
       days.push({
-        dayOrder: index + 1,
-        dayLabel: typeof day.dayOfWeek === 'string' ? day.dayOfWeek : `Day ${index + 1}`,
-        muscleFocus: day.muscleGroups.join(', '),
-        setsRepsRestRpeDefaults,
+        dayOfWeek,
+        exercises,
       });
-    });
+    }
   } else {
     // No template found — generate minimal structure
     for (let i = 0; i < trainingDaysPerWeek; i++) {
+      const dayOfWeek = `Day ${i + 1}`;
+      const muscleFocus = splitType === 'full_body' ? 'Full Body' : 'TBD';
+      const muscleFocusArray = parseMuscleFocus(muscleFocus);
+      
+      const availableExercises = await selectExercises(
+        muscleFocusArray,
+        equipmentAvailable || [],
+        limitations || [],
+        trainingExperience
+      );
+      
+      if (availableExercises.length === 0) {
+        throw new Error(
+          `No exercises found for day "${dayOfWeek}" with muscle focus "${muscleFocus}". ` +
+          `Check equipment availability and contraindications.`
+        );
+      }
+      
+      const exerciseCount = Math.min(availableExercises.length, Math.floor(Math.random() * 3) + 4);
+      const selectedExercises = availableExercises.slice(0, exerciseCount);
+      
+      const exercises = selectedExercises.map((exercise) => ({
+        exerciseId: exercise._id,
+        action: 'KEEP',
+        sets: setsRepsRestRpeDefaults.sets,
+        reps: setsRepsRestRpeDefaults.reps,
+        rpe: setsRepsRestRpeDefaults.rpe,
+        restSeconds: defaultRestSeconds,
+      }));
+      
       days.push({
-        dayOrder: i + 1,
-        dayLabel: `Day ${i + 1}`,
-        muscleFocus: splitType === 'full_body' ? 'Full Body' : 'TBD',
-        setsRepsRestRpeDefaults,
+        dayOfWeek,
+        exercises,
       });
     }
   }
@@ -155,4 +316,6 @@ async function generateCandidatePlan(memberProfile) {
 module.exports = {
   generateCandidatePlan,
   GOAL_DEFAULTS, // Export for testing
+  convertRestToSeconds, // Export for testing
+  parseMuscleFocus, // Export for testing
 };
