@@ -4,7 +4,10 @@
  * Flow: structured prompt → AI Gateway → validate vs Day-1 Section 8 schema
  * → persist AiDecision (always, with validationResult.passed true|false).
  *
- * Does not write WorkoutPlan — that is Day 4 plan generation.
+ * Gateway failures / timeouts also persist a failed AiDecision (when persist=true)
+ * then rethrow so Day 4 `runDecisionWithFallback` can serve a rules-only plan.
+ *
+ * Does not write WorkoutPlan — that is Dev1 Day 4 plan generation.
  */
 
 const { AiDecision, Exercise, MemberProfile, WorkoutLog } = require('../database/models');
@@ -159,7 +162,44 @@ async function runAiDecision(input = {}) {
     extraInstructions,
   });
 
-  const completion = await generate({ prompt, provider, jsonMode: true });
+  let completion;
+  try {
+    completion = await generate({ prompt, provider, jsonMode: true });
+  } catch (err) {
+    const validationResult = {
+      passed: false,
+      reason:
+        err.code === 'AI_TIMEOUT' || err.status === 504
+          ? `AI timeout: ${err.message}`
+          : `AI error: ${err.message}`,
+    };
+    const rawOutput = {
+      error: err.message,
+      code: err.code,
+      status: err.status,
+    };
+
+    let decision = null;
+    if (persist) {
+      decision = await AiDecisionModel.create({
+        memberId,
+        planId: planId || undefined,
+        modelVersion: provider?.model || provider?.name || 'unknown',
+        promptSent: prompt,
+        rawOutput,
+        validationResult,
+      });
+    }
+
+    err.aiDecision = decision;
+    err.validationResult = validationResult;
+    err.prompt = prompt;
+    err.rawOutput = rawOutput;
+    err.modelVersion = provider?.model || provider?.name || 'unknown';
+    err.provider = provider?.name || 'unknown';
+    throw err;
+  }
+
   const { raw, parseError } = parseGatewayJson(completion.text);
 
   let validationResult;

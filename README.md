@@ -77,6 +77,38 @@ const result = await runAiDecision({
 
 Manual smoke: `node scripts/smokeDecisionEngine.js`
 
+## AI Fallback + Safety Validator (Day 4 / Dev2)
+
+When the AI call fails, times out, or fails Day-1 contract validation,
+`runDecisionWithFallback` returns a **rules-only** plan draft with
+`validatedBy: "system"` (no WorkoutPlan write — Dev1 owns persistence).
+
+```js
+const { runDecisionWithFallback, createMockProvider } = require('./src/ai');
+
+const result = await runDecisionWithFallback({
+  memberId,
+  rules: candidatePlanFromRulesEngine,
+  profile,
+  catalog,
+  provider: createMockProvider(), // or omit for live AI
+  persist: false,
+});
+
+// AI path:  result.usedFallback === false, result.ai.parsed
+// Fallback: result.usedFallback === true,  result.planDraft.validatedBy === 'system'
+//           result.fallbackReason: AI_TIMEOUT | AI_ERROR | AI_CONTRACT_FAIL
+//           result.safety from validatePlan(...)
+```
+
+Safety Validator (`src/safety/safetyValidator.js`) gates plans before save:
+- equipment availability + `isApproved`
+- weekly / session **volume** caps
+- **session-duration** realism (work + rest + warmup buffer)
+- member **limitation** vs exercise **contraindication** conflicts
+
+Manual smoke: `node scripts/smokeFallbackPlan.js`
+
 | Env | Default | Notes |
 |-----|---------|-------|
 | `AI_PROVIDER` | `gemini` | `gemini` \| `groq` \| `openai_compatible` \| `mock` |
