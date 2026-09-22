@@ -2,6 +2,23 @@
  * Canonical exercise catalogue seed (Day 2).
  * Substitutions reference other entries by `slug` and are resolved to ObjectIds after insert.
  */
+
+const mongoose = require('mongoose');
+const { Exercise } = require('../models');
+
+async function seedExercises() {
+  console.log("Seeding exercises...");
+
+  for (const ex of EXERCISE_SEED) {
+    await Exercise.findOneAndUpdate(
+      { name: ex.name },
+      ex,
+      { upsert: true, new: true }
+    );
+  }
+
+  console.log("✅ Exercises seeded!");
+}
 function slugify(name) {
   return name
     .toLowerCase()
@@ -728,6 +745,30 @@ const EXERCISE_SEED = [
   slug: slugify(exercise.name),
   isApproved: true,
 }));
+
+if (require.main === module) {
+  require('dotenv').config();
+  const connectDB = require('../connectDB');
+
+  (async () => {
+    await connectDB();
+    await seedExercises();
+    await mongoose.connection.close();
+    console.log("Done.");
+  })();
+}
+if (require.main === module) {
+  require('dotenv').config();
+  const connectDB = require('../connectDB');
+
+  (async () => {
+    await connectDB();
+    await seedExercises();
+    await mongoose.connection.close();
+    console.log("Done.");
+  })();
+}
+
 
 module.exports = {
   EXERCISE_SEED,

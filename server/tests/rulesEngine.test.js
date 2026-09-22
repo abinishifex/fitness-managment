@@ -54,7 +54,7 @@ describe('Workout Rules Engine', () => {
       const result1 = parseMuscleFocus('Chest, Triceps, Front Delts');
       assert.ok(result1.includes('chest'));
       assert.ok(result1.includes('triceps'));
-      assert.ok(result1.includes('front_delts'));
+      assert.ok(result1.includes('shoulders'));
 
       const result2 = parseMuscleFocus('Back, Lats, Biceps');
       assert.ok(result2.includes('back'));
@@ -63,6 +63,19 @@ describe('Workout Rules Engine', () => {
 
       const result3 = parseMuscleFocus('');
       assert.deepEqual(result3, []);
+
+      const fullBody = parseMuscleFocus('Full Body');
+      assert.ok(fullBody.includes('chest'));
+      assert.ok(fullBody.includes('forearms'));
+      assert.ok(fullBody.includes('upper_back'));
+
+      assert.deepEqual(parseMuscleFocus('Arms'), ['biceps', 'triceps', 'forearms']);
+      assert.deepEqual(parseMuscleFocus('Legs'), [
+        'quads',
+        'hamstrings',
+        'glutes',
+        'calves',
+      ]);
     });
   });
 

@@ -62,37 +62,66 @@ function convertRestToSeconds(restString) {
  */
 function parseMuscleFocus(muscleFocus) {
   if (!muscleFocus) return [];
-  
+
+  const allCatalogMuscles = [
+    'back',
+    'biceps',
+    'calves',
+    'chest',
+    'core',
+    'forearms',
+    'glutes',
+    'hamstrings',
+    'lats',
+    'quads',
+    'rear_delts',
+    'shoulders',
+    'side_delts',
+    'traps',
+    'triceps',
+    'upper_back',
+  ];
+
   const mapping = {
-    'chest': 'chest',
-    'back': 'back',
-    'lats': 'lats',
-    'shoulders': 'shoulders',
-    'front delts': 'front_delts',
-    'side delts': 'side_delts',
-    'rear delts': 'rear_delts',
-    'biceps': 'biceps',
-    'triceps': 'triceps',
-    'quads': 'quads',
-    'hamstrings': 'hamstrings',
-    'glutes': 'glutes',
-    'calves': 'calves',
-    'core': 'core',
-    'forearms': 'forearms',
-    'traps': 'traps',
-    'upper back': 'upper_back',
+    'full body': allCatalogMuscles,
+    'full_body': allCatalogMuscles,
+    'upper body': ['chest', 'back', 'shoulders', 'biceps', 'triceps'],
+    'upper': ['chest', 'back', 'shoulders', 'biceps', 'triceps'],
+    'lower body': ['quads', 'hamstrings', 'glutes', 'calves'],
+    'lower': ['quads', 'hamstrings', 'glutes', 'calves'],
+    'push': ['chest', 'shoulders', 'triceps'],
+    'pull': ['back', 'biceps'],
+    'legs': ['quads', 'hamstrings', 'glutes', 'calves'],
+    'arms': ['biceps', 'triceps', 'forearms'],
+    'chest': ['chest'],
+    'back': ['back'],
+    'lats': ['lats'],
+    'shoulders': ['shoulders'],
+    'front delts': ['shoulders'],
+    'side delts': ['side_delts'],
+    'rear delts': ['rear_delts'],
+    'biceps': ['biceps'],
+    'triceps': ['triceps'],
+    'quads': ['quads'],
+    'hamstrings': ['hamstrings'],
+    'glutes': ['glutes'],
+    'calves': ['calves'],
+    'core': ['core'],
+    'forearms': ['forearms'],
+    'traps': ['traps'],
+    'upper back': ['upper_back'],
   };
-  
-  const normalized = [];
+
+  const normalized = new Set();
   const lowerFocus = muscleFocus.toLowerCase();
-  
-  for (const [key, value] of Object.entries(mapping)) {
+
+  for (const [key, values] of Object.entries(mapping)) {
     if (lowerFocus.includes(key)) {
-      normalized.push(value);
+      values.forEach((value) => normalized.add(value));
     }
   }
-  
-  return normalized.length > 0 ? normalized : ['full_body'];
+
+  return normalized.size > 0 ? [...normalized] : allCatalogMuscles;
 }
 
 /**
