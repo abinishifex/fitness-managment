@@ -8,21 +8,19 @@
  * Options:
  *   --fresh  delete all exercises first (destructive)
  */
-require('dotenv/config');
+require('../src/config/loadDotenv');
 
-const path = require('path');
 const mongoose = require('mongoose');
-
-// Load .env from repo root or server/
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 const connectDB = require('../src/database/connectDB');
 const { Exercise } = require('../src/database/models');
 const { EXERCISE_SEED } = require('../src/database/seeds/exercises');
 
 async function seedExercises({ fresh = false } = {}) {
-  await connectDB();
+  // Allow callers (tests) that already opened a connection to skip connectDB.
+  if (mongoose.connection.readyState === 0) {
+    await connectDB();
+  }
 
   if (fresh) {
     const deleted = await Exercise.deleteMany({});
@@ -43,7 +41,12 @@ async function seedExercises({ fresh = false } = {}) {
           approvedSubstitutions: [],
         },
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
+      {
+        upsert: true,
+        returnDocument: 'after',
+        setDefaultsOnInsert: true,
+        runValidators: true,
+      }
     );
     bySlug.set(doc.slug, doc);
   }

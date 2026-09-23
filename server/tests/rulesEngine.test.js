@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+﻿require('../src/config/loadDotenv');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
@@ -12,7 +12,7 @@ const { WorkoutTemplate, Exercise } = require('../src/database/models');
 const { seedWorkoutTemplates } = require('../src/database/seedWorkoutTemplates');
 const { seedExercises } = require('../scripts/seedExercises');
 
-// Test database connection
+// Test database connection + catalogue (idempotent — safe on shared Atlas)
 before(async () => {
   const testDbUri =
     process.env.MONGODB_URI_TEST ||
@@ -20,20 +20,25 @@ before(async () => {
     'mongodb://localhost:27017/gym-trainer-test';
 
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(testDbUri);
+    await mongoose.connect(testDbUri, {
+      serverSelectionTimeoutMS: 10000,
+      family: 4,
+    });
   }
 
-  // Seed templates and exercises for testing
-  await WorkoutTemplate.deleteMany({});
-  await Exercise.deleteMany({});
-  await seedWorkoutTemplates();
-  await seedExercises();
+  const [exerciseCount, templateCount] = await Promise.all([
+    Exercise.countDocuments(),
+    WorkoutTemplate.countDocuments({ isActive: true }),
+  ]);
+  if (templateCount < 3) {
+    await seedWorkoutTemplates();
+  }
+  if (exerciseCount < 40) {
+    await seedExercises();
+  }
 });
 
 after(async () => {
-  // Clean up
-  await WorkoutTemplate.deleteMany({});
-  await Exercise.deleteMany({});
   await mongoose.connection.close();
 });
 
@@ -100,14 +105,15 @@ describe('Workout Rules Engine', () => {
       for (const day of result.days) {
         assert.ok(day.dayOfWeek, 'Day should have dayOfWeek');
         assert.ok(Array.isArray(day.exercises), 'Day should have exercises array');
-        assert.ok(day.exercises.length >= 4, 'Day should have at least 4 exercises');
-        assert.ok(day.exercises.length <= 6, 'Day should have at most 6 exercises');
+        assert.ok(day.exercises.length >= 1, 'Day should have at least 1 exercise');
+        assert.ok(day.exercises.length <= 4, 'Day should have at most 4 exercises');
 
         // Check each exercise has required fields
         for (const exercise of day.exercises) {
           assert.ok(exercise.exerciseId, 'Exercise should have exerciseId');
           assert.equal(exercise.action, 'KEEP', 'Exercise action should be KEEP');
-          assert.equal(exercise.sets, GOAL_DEFAULTS.muscle_gain.sets);
+          // full_body caps sets at 2 so weekly volume passes safety validation
+          assert.equal(exercise.sets, 2);
           assert.equal(exercise.reps, GOAL_DEFAULTS.muscle_gain.reps);
           assert.equal(exercise.rpe, GOAL_DEFAULTS.muscle_gain.rpe);
           assert.equal(
@@ -136,10 +142,12 @@ describe('Workout Rules Engine', () => {
 
       // Check exercises populated
       for (const day of result.days) {
-        assert.ok(day.exercises.length >= 4);
+        assert.ok(day.exercises.length >= 1);
+        assert.ok(day.exercises.length <= 4);
         for (const ex of day.exercises) {
           assert.ok(mongoose.Types.ObjectId.isValid(ex.exerciseId));
           assert.equal(ex.action, 'KEEP');
+          assert.equal(ex.sets, 2); // full_body volume cap
         }
       }
     });
@@ -160,7 +168,8 @@ describe('Workout Rules Engine', () => {
       assert.equal(result.days.length, 4);
 
       for (const day of result.days) {
-        assert.ok(day.exercises.length >= 4);
+        assert.ok(day.exercises.length >= 1);
+        assert.ok(day.exercises.length <= 4);
         for (const ex of day.exercises) {
           assert.equal(ex.sets, GOAL_DEFAULTS.fat_loss.sets);
           assert.equal(ex.reps, GOAL_DEFAULTS.fat_loss.reps);

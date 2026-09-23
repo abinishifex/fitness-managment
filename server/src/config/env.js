@@ -1,4 +1,4 @@
-require('dotenv/config');
+require('./loadDotenv');
 
 const required = ['MONGODB_URI'];
 
