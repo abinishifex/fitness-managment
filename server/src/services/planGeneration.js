@@ -80,7 +80,7 @@ async function loadExerciseCatalog(plan) {
     ),
   ];
 
-  return Exercise.find({ _id: { $in: ids } });
+  return Exercise.find({ _id: { $in: ids } }).lean();
 }
 
 async function generateWorkoutPlan(userId) {

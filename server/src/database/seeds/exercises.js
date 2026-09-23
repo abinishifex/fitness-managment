@@ -757,17 +757,6 @@ if (require.main === module) {
     console.log("Done.");
   })();
 }
-if (require.main === module) {
-  require('dotenv').config();
-  const connectDB = require('../connectDB');
-
-  (async () => {
-    await connectDB();
-    await seedExercises();
-    await mongoose.connection.close();
-    console.log("Done.");
-  })();
-}
 
 
 module.exports = {
