@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-require('dotenv/config');
+require('../config/loadDotenv');
 require('./models'); // ensures all schemas (and their indexes) are registered before syncing
 
 async function connectDB() {

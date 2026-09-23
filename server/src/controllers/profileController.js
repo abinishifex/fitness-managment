@@ -76,7 +76,7 @@ async function updateProfile(req, res, next) {
     const profile = await MemberProfile.findOneAndUpdate(
       { userId: req.userId },
       { ...profileData, userId: req.userId },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: 'after', upsert: true, runValidators: true }
     );
 
     res.json({

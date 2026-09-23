@@ -5,6 +5,7 @@ const {
 } = require('../database/models');
 const { generateCandidatePlan } = require('./rulesEngine');
 const { runDecisionWithFallback } = require('../ai/fallbackPlan');
+const { createMockProvider } = require('../ai');
 const { validatePlan } = require('../safety/safetyValidator');
 
 function sameDay(left, right) {
@@ -83,6 +84,11 @@ async function loadExerciseCatalog(plan) {
   return Exercise.find({ _id: { $in: ids } }).lean();
 }
 
+function shouldUseMockAi() {
+  // Only when explicitly requested — do not hide live provider failures in tests.
+  return process.env.AI_PROVIDER === 'mock';
+}
+
 async function generateWorkoutPlan(userId) {
   const profile = await MemberProfile.findOne({ userId });
   if (!profile) {
@@ -93,12 +99,20 @@ async function generateWorkoutPlan(userId) {
 
   const candidate = await generateCandidatePlan(profile);
   const candidateCatalog = await loadExerciseCatalog(candidate);
-  const result = await runDecisionWithFallback({
+
+  const decisionInput = {
     memberId: profile._id,
     profile,
     rules: candidate,
     catalog: candidateCatalog,
-  });
+    templateId: candidate.matchedTemplateId,
+  };
+  // Keep the HTTP chain offline-stable in tests / CI.
+  if (shouldUseMockAi()) {
+    decisionInput.provider = createMockProvider();
+  }
+
+  const result = await runDecisionWithFallback(decisionInput);
 
   let planDraft;
   let safety;
@@ -117,6 +131,7 @@ async function generateWorkoutPlan(userId) {
       templateId: candidate.matchedTemplateId,
       trainingDaysPerWeek: profile.trainingDaysPerWeek,
       sessionDurationMinutes: profile.sessionDurationMinutes,
+      weeklyVolumeTarget: candidate.weeklyVolumeTarget,
       aiReason: result.ai.parsed.reason,
       aiDecisionId: result.ai.decision?._id,
     };
@@ -138,6 +153,18 @@ async function generateWorkoutPlan(userId) {
     error.details = safety.issues;
     throw error;
   }
+
+  if (!planDraft.templateId) {
+    const error = new Error('No matching workout template for profile');
+    error.status = 422;
+    throw error;
+  }
+
+  // Only one active plan per member.
+  await WorkoutPlan.updateMany(
+    { memberId: profile._id, isActive: true },
+    { $set: { isActive: false, status: 'archived' } }
+  );
 
   return WorkoutPlan.create({
     ...planDraft,

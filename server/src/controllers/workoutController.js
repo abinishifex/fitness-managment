@@ -26,11 +26,15 @@ function getEatWeekday(date = new Date()) {
 async function getTodayWorkout(req, res, next) {
   try {
     const profile = await MemberProfile.findOne({ userId: req.userId });
+    if (!profile) {
+      throw createError(404, 'Profile not found');
+    }
+
     const plan = await WorkoutPlan.findOne({
-      memberId: profile?._id,
+      memberId: profile._id,
       isActive: true,
       status: 'active',
-    });
+    }).sort({ updatedAt: -1 });
 
     if (!plan) {
       throw createError(404, 'No active plan');
