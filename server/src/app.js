@@ -5,6 +5,7 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const exerciseRoutes = require('./routes/exerciseRoutes');
+const workoutRoutes = require('./routes/workoutRoutes');
 
 /**
  * Build the Express app (no listen / no DB connect).
@@ -38,6 +39,7 @@ function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/exercises', exerciseRoutes);
+  app.use('/api/workouts', workoutRoutes);
 
   // Placeholder for other API routes
   app.use('/api', (req, res) => {
