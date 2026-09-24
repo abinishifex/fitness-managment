@@ -7,11 +7,12 @@
  */
 const { createOpenAiCompatibleProvider } = require('./openaiCompatible');
 
+/** Lite first — free tier has ~500 RPD vs ~20 RPD on standard Flash. */
 const DEFAULT_GEMINI_MODELS = [
-  'gemini-3.6-flash',
   'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.6-flash',
 ];
 
 const DEFAULT_BASE_URL =
@@ -21,6 +22,8 @@ const DEFAULT_BASE_URL =
 const modelCooldowns = new Map();
 
 const DEFAULT_COOLDOWN_MS = 60_000;
+/** Daily quota (RPD) exhausted — skip until reset window, avoid hammering. */
+const DAILY_QUOTA_COOLDOWN_MS = 60 * 60 * 1000;
 /** Retired / not-found models stay skipped for a long time. */
 const UNAVAILABLE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 /** Overload (503) — shorter shift window. */
@@ -50,6 +53,27 @@ function isRateLimited(err) {
   );
 }
 
+/** True when the free-tier daily request budget is gone (not just RPM). */
+function isDailyQuotaExhausted(err) {
+  const text = `${err?.message || ''} ${JSON.stringify(err?.details || {})}`;
+  return /per.?day|requests.?per.?day|GenerateRequestsPerDay|daily.?quota|RPD/i.test(
+    text
+  );
+}
+
+/** Prefer Retry-After header, then "retry in Xs" in the body. */
+function resolveRetryAfterMs(err) {
+  if (Number.isFinite(err?.retryAfterMs) && err.retryAfterMs > 0) {
+    return err.retryAfterMs;
+  }
+  const match = String(err?.message || '').match(/retry in ([\d.]+)\s*s/i);
+  if (match) {
+    const ms = Math.ceil(Number(match[1]) * 1000);
+    if (Number.isFinite(ms) && ms > 0) return ms;
+  }
+  return null;
+}
+
 function isModelUnavailable(err) {
   const http = err?.httpStatus ?? err?.status;
   if (http === 404) return true;
@@ -73,13 +97,12 @@ function isShiftWorthy(err) {
 
 function cooldownForError(err, fallbackMs) {
   if (isModelUnavailable(err)) return UNAVAILABLE_COOLDOWN_MS;
+  if (isDailyQuotaExhausted(err)) {
+    return resolveRetryAfterMs(err) || DAILY_QUOTA_COOLDOWN_MS;
+  }
   if (isRateLimited(err)) {
     return (
-      (Number.isFinite(err.retryAfterMs) && err.retryAfterMs > 0
-        ? err.retryAfterMs
-        : null) ||
-      fallbackMs ||
-      DEFAULT_COOLDOWN_MS
+      resolveRetryAfterMs(err) || fallbackMs || DEFAULT_COOLDOWN_MS
     );
   }
   if (isTransientOverload(err)) return OVERLOAD_COOLDOWN_MS;
@@ -96,7 +119,12 @@ function markCooldown(model, retryAfterMs) {
     Number.isFinite(retryAfterMs) && retryAfterMs > 0
       ? retryAfterMs
       : DEFAULT_COOLDOWN_MS;
-  modelCooldowns.set(model, Date.now() + ms);
+  const until = Date.now() + ms;
+  // Never shorten an existing cooldown (avoids re-hitting a hot model).
+  const existing = modelCooldowns.get(model) || 0;
+  if (until > existing) {
+    modelCooldowns.set(model, until);
+  }
 }
 
 /** Test helper — clear cooldowns between cases. */
@@ -242,13 +270,16 @@ function createGeminiProvider({
 module.exports = {
   DEFAULT_GEMINI_MODELS,
   DEFAULT_BASE_URL,
+  DAILY_QUOTA_COOLDOWN_MS,
   createGeminiProvider,
   clearModelCooldowns,
   cooldownRemainingMs,
   markCooldown,
   isRateLimited,
+  isDailyQuotaExhausted,
   isModelUnavailable,
   isTransientOverload,
   isShiftWorthy,
+  cooldownForError,
   parseModels,
 };

@@ -1,3 +1,8 @@
+const path = require('node:path');
+// Load repo-root .env before skip checks (server/.env is optional).
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+require('dotenv').config();
+
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -215,19 +220,57 @@ describe('Gemini model shifting', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('uses a long cooldown for daily quota so the model is not re-hit', async () => {
+    const {
+      cooldownForError,
+      isDailyQuotaExhausted,
+      DAILY_QUOTA_COOLDOWN_MS,
+      cooldownRemainingMs,
+    } = require('../src/ai/providers/gemini');
+
+    const err = new Error(
+      'Resource exhausted: GenerateRequestsPerDayPerModel cap'
+    );
+    err.httpStatus = 429;
+    err.code = 'AI_RATE_LIMIT';
+
+    assert.equal(isDailyQuotaExhausted(err), true);
+    assert.equal(cooldownForError(err, 60_000), DAILY_QUOTA_COOLDOWN_MS);
+
+    markCooldown('gemini-3.6-flash', cooldownForError(err, 60_000));
+    assert.ok(cooldownRemainingMs('gemini-3.6-flash') > 50 * 60 * 1000);
+  });
+
+  it('does not shorten an existing longer cooldown', () => {
+    markCooldown('gemini-3.6-flash', 120_000);
+    markCooldown('gemini-3.6-flash', 5_000);
+    const { cooldownRemainingMs } = require('../src/ai/providers/gemini');
+    assert.ok(cooldownRemainingMs('gemini-3.6-flash') > 60_000);
+  });
 });
 
-describe('AI Gateway live (optional)', () => {
+describe('AI Gateway live (Gemini)', () => {
   it(
     'calls Gemini when AI_API_KEY is set',
     { skip: !process.env.AI_API_KEY || process.env.AI_PROVIDER === 'mock' },
-    async () => {
-      const result = await generateCompletion({
-        prompt: [
-          'Return a minimal valid AI Output Contract JSON.',
-          'Use exerciseId "507f1f77bcf86cd799439011", action KEEP, Monday, sets 3, reps "8-12".',
-        ].join(' '),
-      });
+    async (t) => {
+      let result;
+      try {
+        result = await generateCompletion({
+          prompt: [
+            'Return a minimal valid AI Output Contract JSON.',
+            'Use exerciseId "507f1f77bcf86cd799439011", action KEEP, Monday, sets 3, reps "8-12".',
+          ].join(' '),
+        });
+      } catch (err) {
+        const blob = `${err?.message || ''} ${err?.cause?.code || ''} ${err?.cause?.message || ''}`;
+        if (/fetch failed|ETIMEDOUT|ENETUNREACH|ECONNREFUSED/i.test(blob)) {
+          t.skip('Gemini unreachable from this network');
+          return;
+        }
+        throw err;
+      }
 
       assert.ok(result.text);
       const json = JSON.parse(result.text);
