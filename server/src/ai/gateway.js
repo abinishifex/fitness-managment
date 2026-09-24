@@ -35,7 +35,7 @@ function createProvider(overrides = {}) {
       apiKey,
       baseUrl:
         baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai',
-      model: model || 'gemini-3.6-flash',
+      model: model || 'gemini-3.5-flash-lite',
       models,
       timeoutMs,
     });

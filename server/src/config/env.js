@@ -17,11 +17,11 @@ function loadEnv() {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
     aiProvider: process.env.AI_PROVIDER || 'gemini',
     aiApiKey: process.env.AI_API_KEY || '',
-    aiModel: process.env.AI_MODEL || 'gemini-3.6-flash',
-    // Comma-separated fallback chain — gateway shifts on 429/404/503 until cooldown expires.
+    aiModel: process.env.AI_MODEL || 'gemini-3.5-flash-lite',
+    // Lite-first chain — higher free RPD; gateway shifts on 429/404/503 + cooldown.
     aiModels:
       process.env.AI_MODELS ||
-      'gemini-3.6-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.6-flash',
     aiBaseUrl:
       process.env.AI_BASE_URL ||
       'https://generativelanguage.googleapis.com/v1beta/openai',
