@@ -158,7 +158,7 @@ async function seedWorkoutTemplates() {
 
 // If run directly: node seedWorkoutTemplates.js
 if (require.main === module) {
-  require('dotenv/config');
+  require('../config/loadDotenv');
   const connectDB = require('./connectDB');
 
   (async () => {

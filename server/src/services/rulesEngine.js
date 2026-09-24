@@ -165,9 +165,41 @@
     };
     query.difficulty = { $in: difficultyOrder[experienceLevel] || ['beginner', 'intermediate'] };
     
-    const exercises = await Exercise.find(query).limit(20); // Limit to 20 to avoid overload
-    
+    const exercises = await Exercise.find(query).limit(40); // pool for balanced pick
     return exercises;
+  }
+
+  /**
+   * Prefer one exercise per requested muscle so full-body weeks stay under
+   * safety weekly volume caps (MAX 25 sets/muscle).
+   */
+  function pickBalancedExercises(availableExercises, muscleFocusArray, maxCount = 5) {
+    const picked = [];
+    const usedIds = new Set();
+    const covered = new Set();
+
+    for (const muscle of muscleFocusArray) {
+      if (picked.length >= maxCount) break;
+      const match = availableExercises.find((exercise) => {
+        if (usedIds.has(String(exercise._id))) return false;
+        return (exercise.primaryMuscles || [])
+          .map((m) => String(m).toLowerCase())
+          .includes(String(muscle).toLowerCase());
+      });
+      if (!match) continue;
+      picked.push(match);
+      usedIds.add(String(match._id));
+      covered.add(String(muscle).toLowerCase());
+    }
+
+    for (const exercise of availableExercises) {
+      if (picked.length >= maxCount) break;
+      if (usedIds.has(String(exercise._id))) continue;
+      picked.push(exercise);
+      usedIds.add(String(exercise._id));
+    }
+
+    return picked;
   }
 
   /**
@@ -282,15 +314,23 @@
           );
         }
         
-        // Select 4-6 exercises (or fewer if not enough available)
-        const exerciseCount = Math.min(availableExercises.length, Math.floor(Math.random() * 3) + 4); // 4-6
-        const selectedExercises = availableExercises.slice(0, exerciseCount);
+        // Balanced ≤4 lifts/day; full_body uses 2 sets so 4×2×3d ≤ weekly safety cap.
+        const selectedExercises = pickBalancedExercises(
+          availableExercises,
+          muscleFocusArray,
+          4
+        );
         
+        const setsForDay =
+          splitType === 'full_body'
+            ? Math.min(2, setsRepsRestRpeDefaults.sets)
+            : setsRepsRestRpeDefaults.sets;
+
         // Build exercise objects with action, sets, reps, rpe, restSeconds
         const exercises = selectedExercises.map((exercise) => ({
           exerciseId: exercise._id,
           action: 'KEEP',
-          sets: setsRepsRestRpeDefaults.sets,
+          sets: setsForDay,
           reps: setsRepsRestRpeDefaults.reps,
           rpe: setsRepsRestRpeDefaults.rpe,
           restSeconds: defaultRestSeconds,
@@ -322,13 +362,21 @@
           );
         }
         
-        const exerciseCount = Math.min(availableExercises.length, Math.floor(Math.random() * 3) + 4);
-        const selectedExercises = availableExercises.slice(0, exerciseCount);
+        const selectedExercises = pickBalancedExercises(
+          availableExercises,
+          muscleFocusArray,
+          4
+        );
+
+        const setsForDay =
+          splitType === 'full_body'
+            ? Math.min(2, setsRepsRestRpeDefaults.sets)
+            : setsRepsRestRpeDefaults.sets;
         
         const exercises = selectedExercises.map((exercise) => ({
           exerciseId: exercise._id,
           action: 'KEEP',
-          sets: setsRepsRestRpeDefaults.sets,
+          sets: setsForDay,
           reps: setsRepsRestRpeDefaults.reps,
           rpe: setsRepsRestRpeDefaults.rpe,
           restSeconds: defaultRestSeconds,
@@ -359,4 +407,5 @@
     GOAL_DEFAULTS, // Export for testing
     convertRestToSeconds, // Export for testing
     parseMuscleFocus, // Export for testing
+    pickBalancedExercises, // Export for testing
   };
