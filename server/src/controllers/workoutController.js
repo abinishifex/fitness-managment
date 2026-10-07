@@ -34,7 +34,13 @@ async function getTodayWorkout(req, res, next) {
       memberId: profile._id,
       isActive: true,
       status: 'active',
-    }).sort({ updatedAt: -1 });
+    })
+      .populate({
+        path: 'days.exercises.exerciseId',
+        select:
+          'name slug primaryMuscles secondaryMuscles equipmentRequired difficulty type instructions formCues movementPattern',
+      })
+      .sort({ updatedAt: -1 });
 
     if (!plan) {
       throw createError(404, 'No active plan');
@@ -46,14 +52,44 @@ async function getTodayWorkout(req, res, next) {
       Number(item.dayOfWeek) === today.number
     );
 
+    const exercises = (day?.exercises || []).map((item) => {
+      const doc = item.toObject ? item.toObject() : { ...item };
+      const populated = doc.exerciseId && typeof doc.exerciseId === 'object' ? doc.exerciseId : null;
+      return {
+        exerciseId: populated?._id || doc.exerciseId,
+        action: doc.action,
+        sets: doc.sets,
+        reps: doc.reps,
+        rpe: doc.rpe,
+        restSeconds: doc.restSeconds,
+        exercise: populated
+          ? {
+              _id: populated._id,
+              name: populated.name,
+              slug: populated.slug,
+              primaryMuscles: populated.primaryMuscles || [],
+              secondaryMuscles: populated.secondaryMuscles || [],
+              equipmentRequired: populated.equipmentRequired || [],
+              difficulty: populated.difficulty,
+              type: populated.type,
+              instructions: populated.instructions,
+              formCues: populated.formCues || [],
+              movementPattern: populated.movementPattern,
+            }
+          : null,
+      };
+    });
+
     res.json({
       success: true,
       data: {
         date: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10),
         dayOfWeek: today.name,
-        exercises: day?.exercises || [],
+        exercises,
         isRestDay: !day,
         planId: plan._id,
+        splitType: plan.splitType,
+        sessionDurationMinutes: plan.sessionDurationMinutes,
       },
     });
   } catch (err) {

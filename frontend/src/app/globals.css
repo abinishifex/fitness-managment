@@ -35,6 +35,127 @@ body {
   box-shadow: 0 0 24px rgba(212, 255, 0, 0.35);
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 255, 0, 0.35);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 18px 2px rgba(212, 255, 0, 0.25);
+  }
+}
+
+@keyframes ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes glow-sweep {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes set-complete {
+  0% {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(212, 255, 0, 0.4);
+  }
+  60% {
+    transform: scale(1.01);
+    box-shadow: 0 0 28px 4px rgba(212, 255, 0, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.55s ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1.6s ease-in-out infinite;
+}
+
+.animate-ken-burns {
+  animation: ken-burns 18s ease-out forwards;
+}
+
+.animate-glow-sweep {
+  animation: glow-sweep 3.5s ease-in-out infinite;
+}
+
+.animate-set-complete {
+  animation: set-complete 0.55s ease-out;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.side-nav-button {
+  padding: 13px 12px;
+  color: var(--muted);
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.side-nav-button:hover {
+  background: var(--panel2);
+  color: var(--text);
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* App shell styles (login, register, authenticated app) */
 .display {
   font-family: 'Anton', sans-serif;
