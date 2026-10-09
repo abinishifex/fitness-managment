@@ -1,27 +1,36 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { api, getToken } from '@/lib/api';
+import { getToken } from '@/lib/api';
 import type { Profile } from '@/lib/types';
 import MultiSelectDropdown from '@/components/MultiSelectDropdown';
 import { MUSCLE_OPTIONS, parseMuscleGroupString } from '@/lib/muscleOptions';
+import { offlineApi, peekProfile, useSyncStatus } from '@/lib/offline';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const { refreshPending } = useSyncStatus();
 
   useEffect(() => {
+    const cached = peekProfile();
+    if (cached?.profile) {
+      setProfile(cached.profile);
+      setSelectedMuscles(parseMuscleGroupString(cached.profile.priorityMuscleGroup));
+    }
+
     const t = getToken();
     if (t) {
-      api
+      offlineApi
         .getProfile(t)
         .then((x) => {
-          setProfile(x.profile);
-          // Parse stored string into validated array
-          setSelectedMuscles(parseMuscleGroupString(x.profile.priorityMuscleGroup));
+          setProfile(x.data.profile);
+          setSelectedMuscles(parseMuscleGroupString(x.data.profile.priorityMuscleGroup));
         })
-        .catch((e: Error) => setError(e.message));
+        .catch((e: Error) => {
+          if (!peekProfile()) setError(e.message);
+        });
     }
   }, []);
 
@@ -36,16 +45,18 @@ export default function ProfilePage() {
     e.preventDefault();
     const t = getToken();
     if (!t || !profile) return;
+    setError('');
     try {
-      // Omit priorityMuscleGroup from payload when nothing is selected
       const payload: Profile = { ...profile };
       if (selectedMuscles.length === 0) {
         delete payload.priorityMuscleGroup;
       } else {
         payload.priorityMuscleGroup = selectedMuscles.join(',');
       }
-      await api.saveProfile(t, payload);
-      setMessage('Profile synced.');
+      const result = await offlineApi.saveProfile(t, payload);
+      setProfile(result.data.profile);
+      refreshPending();
+      setMessage(result.queued ? 'Saved offline — will sync when you are back online.' : 'Profile synced.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to save');
     }

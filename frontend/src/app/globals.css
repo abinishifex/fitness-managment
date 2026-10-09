@@ -282,6 +282,21 @@ body {
   max-width: 1300px;
   width: 100%;
 }
+.sync-banner {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--volt);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sync-banner--ok {
+  border-left-color: var(--volt);
+  color: var(--volt);
+}
 .page-head {
   display: flex;
   align-items: flex-end;

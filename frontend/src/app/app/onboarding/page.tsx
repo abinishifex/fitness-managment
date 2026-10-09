@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, getToken } from '@/lib/api';
+import { getToken } from '@/lib/api';
 import type { Profile } from '@/lib/types';
 import MultiSelectDropdown from '@/components/MultiSelectDropdown';
 import { MUSCLE_OPTIONS } from '@/lib/muscleOptions';
 import EquipmentImage from '@/components/EquipmentImage';
+import { offlineApi } from '@/lib/offline';
 
 const initial: Profile = {
   age: 25,
@@ -93,8 +94,8 @@ export default function Onboarding() {
       payload.equipmentAvailable = [
         ...new Set([...payload.equipmentAvailable, 'bodyweight']),
       ];
-      await api.saveProfile(t, payload);
-      await api.generatePlan(t);
+      await offlineApi.saveProfile(t, payload);
+      await offlineApi.generatePlan(t);
       router.push('/app');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not initialize your plan');

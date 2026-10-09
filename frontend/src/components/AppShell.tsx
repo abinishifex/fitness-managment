@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Brand } from './Brand';
+import { SyncBanner } from './SyncBanner';
 import { clearSession, getToken, api } from '@/lib/api';
+import { SyncProvider, clearOfflineCache, clearQueue } from '@/lib/offline';
 
 const links = [
   ['/app', 'Train'],
@@ -14,7 +16,7 @@ const links = [
   ['/app/profile', 'Profile'],
 ] as const;
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -22,9 +24,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!getToken()) router.replace('/login');
   }, [router]);
 
+  useEffect(() => {
+    function onAuthError() {
+      clearOfflineCache();
+      clearQueue();
+      clearSession();
+      router.replace('/login');
+    }
+    window.addEventListener('forge:auth-error', onAuthError);
+    return () => window.removeEventListener('forge:auth-error', onAuthError);
+  }, [router]);
+
   async function logout() {
     const token = getToken();
     if (token) await api.logout(token).catch(() => undefined);
+    clearOfflineCache();
+    clearQueue();
     clearSession();
     router.push('/login');
   }
@@ -49,7 +64,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </nav>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main">
+        <SyncBanner />
+        {children}
+      </main>
       <nav className="mobile-nav">
         {links.map(([href, label]) => (
           <Link key={href} className={isActive(href) ? 'active' : ''} href={href}>
@@ -58,5 +76,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SyncProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </SyncProvider>
   );
 }
