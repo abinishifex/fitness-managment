@@ -1,14 +1,12 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/api';
 import type { Profile } from '@/lib/types';
-import MultiSelectDropdown from '@/components/MultiSelectDropdown';
-import { MUSCLE_OPTIONS, parseMuscleGroupString } from '@/lib/muscleOptions';
 import { offlineApi, peekProfile, useSyncStatus } from '@/lib/offline';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const { refreshPending } = useSyncStatus();
@@ -17,7 +15,6 @@ export default function ProfilePage() {
     const cached = peekProfile();
     if (cached?.profile) {
       setProfile(cached.profile);
-      setSelectedMuscles(parseMuscleGroupString(cached.profile.priorityMuscleGroup));
     }
 
     const t = getToken();
@@ -26,7 +23,6 @@ export default function ProfilePage() {
         .getProfile(t)
         .then((x) => {
           setProfile(x.data.profile);
-          setSelectedMuscles(parseMuscleGroupString(x.data.profile.priorityMuscleGroup));
         })
         .catch((e: Error) => {
           if (!peekProfile()) setError(e.message);
@@ -34,25 +30,16 @@ export default function ProfilePage() {
     }
   }, []);
 
-  function handleMuscleChange(values: string[]) {
-    setSelectedMuscles(values);
-    if (profile) {
-      setProfile({ ...profile, priorityMuscleGroup: values.join(',') });
-    }
-  }
-
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const t = getToken();
     if (!t || !profile) return;
     setError('');
     try {
-      const payload: Profile = { ...profile };
-      if (selectedMuscles.length === 0) {
-        delete payload.priorityMuscleGroup;
-      } else {
-        payload.priorityMuscleGroup = selectedMuscles.join(',');
-      }
+      const payload: Profile = {
+        ...profile,
+        name: (profile.name || '').trim(),
+      };
       const result = await offlineApi.saveProfile(t, payload);
       setProfile(result.data.profile);
       refreshPending();
@@ -66,8 +53,8 @@ export default function ProfilePage() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Profile // protocol settings</div>
-          <h1 className="page-title">Member data.</h1>
+          <div className="eyebrow">Profile // member data</div>
+          <h1 className="page-title">Profile.</h1>
         </div>
       </div>
 
@@ -75,104 +62,60 @@ export default function ProfilePage() {
       {message && <div className="notice">{message}</div>}
 
       {profile ? (
-        <form className="card" onSubmit={save}>
-          <div className="grid3">
-            <div className="field">
-              <label>Age</label>
-              <input
-                type="number"
-                value={profile.age}
-                onChange={(e) => setProfile({ ...profile, age: Number(e.target.value) })}
-              />
-            </div>
-            <div className="field">
-              <label>Weight kg</label>
-              <input
-                type="number"
-                value={profile.weightKg}
-                onChange={(e) => setProfile({ ...profile, weightKg: Number(e.target.value) })}
-              />
-            </div>
-            <div className="field">
-              <label>Height cm</label>
-              <input
-                type="number"
-                value={profile.heightCm}
-                onChange={(e) => setProfile({ ...profile, heightCm: Number(e.target.value) })}
-              />
-            </div>
+        <form className="card space-y-6" onSubmit={save}>
+          <div className="field">
+            <label htmlFor="profile-name">Name</label>
+            <input
+              id="profile-name"
+              type="text"
+              maxLength={80}
+              placeholder="Your name"
+              value={profile.name || ''}
+              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+            />
           </div>
 
-          <div className="grid3">
-            <div className="field">
-              <label>Goal</label>
-              <select
-                value={profile.fitnessGoal}
-                onChange={(e) =>
-                  setProfile({ ...profile, fitnessGoal: e.target.value as Profile['fitnessGoal'] })
-                }
-              >
-                <option value="general_fitness">General fitness</option>
-                <option value="muscle_gain">Muscle gain</option>
-                <option value="fat_loss">Fat loss</option>
-                <option value="strength">Strength</option>
-              </select>
-            </div>
-            <div className="field">
-              <label>Experience</label>
-              <select
-                value={profile.trainingExperience}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    trainingExperience: e.target.value as Profile['trainingExperience'],
-                  })
-                }
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </div>
-            <div className="field">
-              <label>Days / week</label>
-              <input
-                type="number" min="1" max="7"
-                value={profile.trainingDaysPerWeek}
-                onChange={(e) =>
-                  setProfile({ ...profile, trainingDaysPerWeek: Number(e.target.value) })
-                }
-              />
+          <div>
+            <p className="muted small mb-3">Body metrics</p>
+            <div className="grid3">
+              <div className="field">
+                <label htmlFor="profile-age">Age</label>
+                <input
+                  id="profile-age"
+                  type="number"
+                  min={13}
+                  max={120}
+                  value={profile.age}
+                  onChange={(e) => setProfile({ ...profile, age: Number(e.target.value) })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="profile-weight">Weight kg</label>
+                <input
+                  id="profile-weight"
+                  type="number"
+                  value={profile.weightKg}
+                  onChange={(e) => setProfile({ ...profile, weightKg: Number(e.target.value) })}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="profile-height">Height cm</label>
+                <input
+                  id="profile-height"
+                  type="number"
+                  value={profile.heightCm}
+                  onChange={(e) => setProfile({ ...profile, heightCm: Number(e.target.value) })}
+                />
+              </div>
             </div>
           </div>
-
-          {/* Priority muscles — multi-select, same component as onboarding */}
-          <MultiSelectDropdown
-            label="Priority muscles"
-            options={MUSCLE_OPTIONS as unknown as { value: string; label: string }[]}
-            selected={selectedMuscles}
-            onChange={handleMuscleChange}
-            maxSelected={3}
-            placeholder="Choose up to 3 muscles…"
-          />
-
-          {/* Display the stored value as readable labels if set */}
-          {selectedMuscles.length > 0 && (
-            <div style={{ marginBottom: 8, color: 'var(--muted)', fontSize: 13 }}>
-              Current:{' '}
-              <strong style={{ color: 'var(--text)' }}>
-                {selectedMuscles
-                  .map((v) => MUSCLE_OPTIONS.find((o) => o.value === v)?.label)
-                  .filter(Boolean)
-                  .join(', ')}
-              </strong>
-            </div>
-          )}
 
           <div className="field">
-            <label>Limitations</label>
+            <label htmlFor="profile-limitations">Limitations</label>
             <textarea
+              id="profile-limitations"
               rows={4}
+              placeholder="Injuries, restrictions — comma separated"
               value={profile.limitations.join(', ')}
               onChange={(e) =>
                 setProfile({
@@ -184,9 +127,14 @@ export default function ProfilePage() {
                 })
               }
             />
+            <p className="muted small mt-2">
+              Training goal, experience, days, and priority muscles are set per plan in Plans.
+            </p>
           </div>
 
-          <button className="btn">Save profile</button>
+          <button className="btn" type="submit">
+            Save profile
+          </button>
         </form>
       ) : (
         <div className="card">

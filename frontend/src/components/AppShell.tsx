@@ -13,6 +13,7 @@ const links = [
   ['/app/workout', 'Workout'],
   ['/app/exercises', 'Types'],
   ['/app/progress', 'Progress'],
+  ['/app/plans', 'Plans'],
   ['/app/profile', 'Profile'],
 ] as const;
 

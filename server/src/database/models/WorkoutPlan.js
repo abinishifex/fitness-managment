@@ -41,8 +41,31 @@ const workoutPlanSchema = new mongoose.Schema({
     enum: ['full_body', 'upper_lower', 'push_pull_legs', 'bro_split'],
     required: true
   },
-  // Snapshots taken at generation time — intentionally NOT re-derived live from
-  // memberProfiles, so a plan stays reproducible even if the profile changes later.
+  name: {
+    type: String,
+    trim: true,
+    maxlength: 80,
+    default: '',
+  },
+  note: {
+    type: String,
+    trim: true,
+    maxlength: 280,
+    default: '',
+  },
+  // Training intent for THIS plan (not member profile). Snapshots at generation
+  // so each library plan can have its own goal / experience / days / priorities.
+  fitnessGoal: {
+    type: String,
+    enum: ['muscle_gain', 'fat_loss', 'general_fitness', 'strength'],
+    default: 'general_fitness',
+  },
+  trainingExperience: {
+    type: String,
+    enum: ['beginner', 'intermediate', 'advanced'],
+    default: 'beginner',
+  },
+  priorityMuscleGroup: { type: String, default: '' },
   trainingDaysPerWeek: { type: Number, required: true },
   sessionDurationMinutes: { type: Number, required: true },
   weeklyVolumeTarget: { type: mongoose.Schema.Types.Mixed, required: true }, // e.g. { chest: 12, back: 14 }
@@ -55,17 +78,20 @@ const workoutPlanSchema = new mongoose.Schema({
     required: true,
     default: 'draft'
   },
+  // Show in Train grid / Workout dropdown when true; Settings can deactivate.
+  enabled: { type: Boolean, required: true, default: true },
   validatedBy: {
     type: String,
     enum: ['system', 'manual'],
     required: true
   },
-  // Fast lookup for "today's workout" — see getWorkoutHistory()/today endpoint in the backend spec.
+  // Selected plan for training (exactly one should be true per member when any exist).
   isActive: { type: Boolean, required: true, default: false }
 }, { timestamps: true });
 
 // Speeds up the common "give me this member's current active plan" query.
 workoutPlanSchema.index({ memberId: 1, isActive: 1 });
+workoutPlanSchema.index({ memberId: 1, enabled: 1 });
 
 
 module.exports = mongoose.model('WorkoutPlan', workoutPlanSchema);

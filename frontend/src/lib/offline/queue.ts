@@ -1,12 +1,36 @@
-import type { Profile } from '../types';
+import type { GeneratePlanBody, Profile, UpdatePlanBody } from '../types';
 import { api, getToken } from '../api';
-import { CACHE_KEYS, setCached } from './cache';
+import {
+  CACHE_KEYS,
+  planCacheKey,
+  setCached,
+  todayCacheKey,
+} from './cache';
 
 const QUEUE_KEY = 'forge_mutation_queue';
 
 export type QueuedMutation =
   | { id: string; type: 'saveProfile'; payload: Profile; createdAt: string }
-  | { id: string; type: 'generatePlan'; createdAt: string };
+  | {
+      id: string;
+      type: 'generatePlan';
+      payload?: GeneratePlanBody;
+      createdAt: string;
+    }
+  | { id: string; type: 'selectPlan'; payload: { planId: string }; createdAt: string }
+  | {
+      id: string;
+      type: 'updatePlan';
+      payload: { planId: string; patch: UpdatePlanBody };
+      createdAt: string;
+    }
+  | {
+      id: string;
+      type: 'regeneratePlan';
+      payload: { planId: string; body?: GeneratePlanBody };
+      createdAt: string;
+    }
+  | { id: string; type: 'deletePlan'; payload: { planId: string }; createdAt: string };
 
 function canUseStorage() {
   return typeof window !== 'undefined';
@@ -31,7 +55,23 @@ function saveQueue(items: QueuedMutation[]) {
 
 type EnqueueInput =
   | { type: 'saveProfile'; payload: Profile; createdAt?: string }
-  | { type: 'generatePlan'; createdAt?: string };
+  | {
+      type: 'generatePlan';
+      payload?: GeneratePlanBody;
+      createdAt?: string;
+    }
+  | { type: 'selectPlan'; payload: { planId: string }; createdAt?: string }
+  | {
+      type: 'updatePlan';
+      payload: { planId: string; patch: UpdatePlanBody };
+      createdAt?: string;
+    }
+  | {
+      type: 'regeneratePlan';
+      payload: { planId: string; body?: GeneratePlanBody };
+      createdAt?: string;
+    }
+  | { type: 'deletePlan'; payload: { planId: string }; createdAt?: string };
 
 export function enqueue(mutation: EnqueueInput): QueuedMutation {
   const item = {
@@ -86,16 +126,83 @@ export async function flushQueue(): Promise<FlushResult> {
         const result = await api.saveProfile(token, item.payload);
         setCached(CACHE_KEYS.profile, { profile: result.profile });
       } else if (item.type === 'generatePlan') {
-        const result = await api.generatePlan(token);
-        setCached(CACHE_KEYS.plan, {
-          planId: result.plan._id,
+        const result = await api.generatePlan(token, item.payload || {});
+        const planId = result.plan._id;
+        const overview = {
+          planId,
+          name: result.plan.name,
+          note: result.plan.note,
           splitType: result.plan.splitType,
+          fitnessGoal: result.plan.fitnessGoal ?? null,
+          trainingExperience: result.plan.trainingExperience ?? null,
+          priorityMuscleGroup: result.plan.priorityMuscleGroup || '',
           trainingDaysPerWeek: result.plan.trainingDaysPerWeek,
           sessionDurationMinutes: result.plan.sessionDurationMinutes,
           aiReason: result.plan.aiReason ?? null,
+          enabled: result.plan.enabled !== false,
+          isActive: Boolean(result.plan.isActive),
           todayDayOfWeek: '',
           days: result.plan.days,
-        });
+        };
+        setCached(planCacheKey(planId), overview);
+        if (result.plan.isActive) {
+          setCached(CACHE_KEYS.selectedPlanId, planId);
+          setCached(CACHE_KEYS.plan, overview);
+        }
+        const list = await api.listPlans(token);
+        setCached(CACHE_KEYS.plans, list);
+        setCached(CACHE_KEYS.selectedPlanId, list.selectedPlanId);
+      } else if (item.type === 'selectPlan') {
+        await api.selectPlan(token, item.payload.planId);
+        setCached(CACHE_KEYS.selectedPlanId, item.payload.planId);
+        const [today, plan, list] = await Promise.all([
+          api.getTodayWorkout(token, item.payload.planId),
+          api.getActivePlan(token, item.payload.planId),
+          api.listPlans(token),
+        ]);
+        setCached(todayCacheKey(item.payload.planId), today);
+        setCached(CACHE_KEYS.today, today);
+        setCached(planCacheKey(item.payload.planId), plan);
+        setCached(CACHE_KEYS.plan, plan);
+        setCached(CACHE_KEYS.plans, list);
+      } else if (item.type === 'updatePlan') {
+        await api.updatePlan(token, item.payload.planId, item.payload.patch);
+        const list = await api.listPlans(token);
+        setCached(CACHE_KEYS.plans, list);
+        setCached(CACHE_KEYS.selectedPlanId, list.selectedPlanId);
+        try {
+          const edited = await api.getActivePlan(token, item.payload.planId);
+          setCached(planCacheKey(item.payload.planId), edited);
+          if (String(list.selectedPlanId) === String(item.payload.planId)) {
+            setCached(CACHE_KEYS.plan, edited);
+          }
+        } catch {
+          /* edited plan may be unavailable */
+        }
+      } else if (item.type === 'regeneratePlan') {
+        await api.regeneratePlan(token, item.payload.planId, item.payload.body || {});
+        const list = await api.listPlans(token);
+        setCached(CACHE_KEYS.plans, list);
+        setCached(CACHE_KEYS.selectedPlanId, list.selectedPlanId);
+        if (list.selectedPlanId) {
+          try {
+            const [today, plan] = await Promise.all([
+              api.getTodayWorkout(token, list.selectedPlanId),
+              api.getActivePlan(token, list.selectedPlanId),
+            ]);
+            setCached(todayCacheKey(list.selectedPlanId), today);
+            setCached(CACHE_KEYS.today, today);
+            setCached(planCacheKey(list.selectedPlanId), plan);
+            setCached(CACHE_KEYS.plan, plan);
+          } catch {
+            /* today may 404 on rest/empty */
+          }
+        }
+      } else if (item.type === 'deletePlan') {
+        await api.deletePlan(token, item.payload.planId);
+        const list = await api.listPlans(token);
+        setCached(CACHE_KEYS.plans, list);
+        setCached(CACHE_KEYS.selectedPlanId, list.selectedPlanId);
       }
       removeFromQueue(item.id);
       flushed += 1;

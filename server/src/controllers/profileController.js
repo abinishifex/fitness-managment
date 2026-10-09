@@ -10,20 +10,28 @@ const {
 
 // Validation schema for profile upsert
 const profileSchema = z.object({
+  name: z.string().trim().max(80).optional().default(''),
   age: z.number().int().min(13, 'Age must be at least 13').max(120, 'Age must be 120 or less'),
   sex: z.enum(SEX_VALUES, {
     message: `sex must be one of: ${SEX_VALUES.join(', ')}`,
   }),
   weightKg: z.number().positive('weightKg must be positive'),
   heightCm: z.number().positive('heightCm must be positive'),
-  fitnessGoal: z.enum(FITNESS_GOAL_VALUES, {
-    message: `fitnessGoal must be one of: ${FITNESS_GOAL_VALUES.join(', ')}`,
-  }),
-  trainingExperience: z.enum(TRAINING_EXPERIENCE_VALUES, {
-    message: `trainingExperience must be one of: ${TRAINING_EXPERIENCE_VALUES.join(', ')}`,
-  }),
-  trainingDaysPerWeek: z.number().int().min(1).max(7),
-  sessionDurationMinutes: z.number().int().min(15).max(300),
+  // Optional legacy fields — plan generation prefers WorkoutPlan / generate body.
+  fitnessGoal: z
+    .enum(FITNESS_GOAL_VALUES, {
+      message: `fitnessGoal must be one of: ${FITNESS_GOAL_VALUES.join(', ')}`,
+    })
+    .optional()
+    .default('general_fitness'),
+  trainingExperience: z
+    .enum(TRAINING_EXPERIENCE_VALUES, {
+      message: `trainingExperience must be one of: ${TRAINING_EXPERIENCE_VALUES.join(', ')}`,
+    })
+    .optional()
+    .default('beginner'),
+  trainingDaysPerWeek: z.number().int().min(1).max(7).optional().default(3),
+  sessionDurationMinutes: z.number().int().min(15).max(300).optional().default(45),
   equipmentAvailable: z
     .array(
       z.enum(EQUIPMENT_VALUES, {
@@ -32,7 +40,7 @@ const profileSchema = z.object({
     )
     .optional()
     .default([]),
-  priorityMuscleGroup: z.string().optional(),
+  priorityMuscleGroup: z.string().optional().default(''),
   limitations: z.array(z.string()).optional().default([]),
 });
 

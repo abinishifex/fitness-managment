@@ -15,6 +15,8 @@ const FALLBACK_REASON = {
   AI_TIMEOUT: 'AI_TIMEOUT',
   AI_ERROR: 'AI_ERROR',
   AI_CONTRACT_FAIL: 'AI_CONTRACT_FAIL',
+  /** Schema-valid AI output that fails equipment/volume/session safety. */
+  AI_SAFETY_FAIL: 'AI_SAFETY_FAIL',
 };
 
 /**

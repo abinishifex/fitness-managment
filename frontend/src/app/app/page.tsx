@@ -3,26 +3,44 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/api';
-import type { ActivePlan, Profile, TodayWorkout } from '@/lib/types';
+import type { ActivePlan, PlanSummary, Profile, TodayWorkout } from '@/lib/types';
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
 import { GeneralPlanOverview } from '@/components/workout/GeneralPlanOverview';
+import { PlanGrid } from '@/components/workout/PlanGrid';
 import { getExerciseImage, WORKOUT_HERO } from '@/lib/exerciseMedia';
-import { offlineApi, peekPlan, peekProfile, peekToday } from '@/lib/offline';
+import {
+  offlineApi,
+  peekPlan,
+  peekPlans,
+  peekProfile,
+  peekSelectedPlanId,
+  peekToday,
+} from '@/lib/offline';
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [today, setToday] = useState<TodayWorkout | null>(null);
   const [plan, setPlan] = useState<ActivePlan | null>(null);
+  const [plans, setPlans] = useState<PlanSummary[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectingId, setSelectingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loadingToday, setLoadingToday] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState(true);
 
-  useEffect(() => {
-    // Instant hydrate from device cache (after mount to avoid SSR mismatch)
+  function hydrateFromCache() {
     const cachedProfile = peekProfile()?.profile ?? null;
-    const cachedToday = peekToday();
-    const cachedPlan = peekPlan();
+    const selected = peekSelectedPlanId();
+    const cachedPlans = peekPlans();
+    const cachedToday = peekToday(selected || undefined);
+    const cachedPlan = peekPlan(selected || undefined);
     if (cachedProfile) setProfile(cachedProfile);
+    if (cachedPlans) {
+      setPlans(cachedPlans.plans);
+      setSelectedPlanId(cachedPlans.selectedPlanId);
+    } else if (selected) {
+      setSelectedPlanId(selected);
+    }
     if (cachedToday) {
       setToday(cachedToday);
       setLoadingToday(false);
@@ -32,6 +50,10 @@ export default function Dashboard() {
       setLoadingPlan(false);
     }
     if (cachedProfile && !cachedToday) setLoadingToday(false);
+  }
+
+  useEffect(() => {
+    hydrateFromCache();
 
     const token = getToken();
     if (!token) {
@@ -44,9 +66,9 @@ export default function Dashboard() {
 
     async function load() {
       try {
-        const [profileResult, todayResult] = await Promise.allSettled([
+        const [profileResult, plansResult] = await Promise.allSettled([
           offlineApi.getProfile(token!),
-          offlineApi.getTodayWorkout(token!),
+          offlineApi.listPlans(token!),
         ]);
 
         if (cancelled) return;
@@ -54,30 +76,50 @@ export default function Dashboard() {
         if (profileResult.status === 'fulfilled') {
           setProfile(profileResult.value.data.profile);
         }
+
+        let planId: string | undefined;
+        if (plansResult.status === 'fulfilled') {
+          setPlans(plansResult.value.data.plans);
+          setSelectedPlanId(plansResult.value.data.selectedPlanId);
+          planId =
+            plansResult.value.data.selectedPlanId ||
+            plansResult.value.data.plans.find((p) => p.enabled)?.planId ||
+            undefined;
+        } else {
+          planId = peekSelectedPlanId() || undefined;
+        }
+
+        const [todayResult, planResult] = await Promise.allSettled([
+          offlineApi.getTodayWorkout(token!, planId),
+          offlineApi.getActivePlan(token!, planId),
+        ]);
+
+        if (cancelled) return;
+
         if (todayResult.status === 'fulfilled') {
           setToday(todayResult.value.data);
-        } else if (!peekToday()) {
+        } else if (!peekToday(planId)) {
           setError(
             todayResult.reason instanceof Error
               ? todayResult.reason.message
               : 'Failed to load today',
           );
         }
+
+        if (planResult.status === 'fulfilled') {
+          setPlan(planResult.value.data);
+        } else if (!peekPlan(planId)) {
+          setPlan(null);
+        }
       } catch (e) {
         if (!cancelled && !peekToday()) {
           setError(e instanceof Error ? e.message : 'Failed to load today');
         }
       } finally {
-        if (!cancelled) setLoadingToday(false);
-      }
-
-      try {
-        const activePlan = await offlineApi.getActivePlan(token!);
-        if (!cancelled) setPlan(activePlan.data);
-      } catch {
-        if (!cancelled && !peekPlan()) setPlan(null);
-      } finally {
-        if (!cancelled) setLoadingPlan(false);
+        if (!cancelled) {
+          setLoadingToday(false);
+          setLoadingPlan(false);
+        }
       }
     }
 
@@ -86,8 +128,14 @@ export default function Dashboard() {
     function onCacheUpdated() {
       const t = getToken();
       if (!t) return;
-      void offlineApi.getTodayWorkout(t).then((r) => setToday(r.data));
-      void offlineApi.getActivePlan(t).then((r) => setPlan(r.data));
+      const selected = peekSelectedPlanId() || undefined;
+      const cachedPlans = peekPlans();
+      if (cachedPlans) {
+        setPlans(cachedPlans.plans);
+        setSelectedPlanId(cachedPlans.selectedPlanId);
+      }
+      void offlineApi.getTodayWorkout(t, selected).then((r) => setToday(r.data));
+      void offlineApi.getActivePlan(t, selected).then((r) => setPlan(r.data));
       void offlineApi.getProfile(t).then((r) => setProfile(r.data.profile));
     }
     window.addEventListener('forge:cache-updated', onCacheUpdated);
@@ -97,6 +145,42 @@ export default function Dashboard() {
       window.removeEventListener('forge:cache-updated', onCacheUpdated);
     };
   }, []);
+
+  async function handleSelectPlan(planId: string) {
+    const token = getToken();
+    if (!token) return;
+    setSelectingId(planId);
+    setError('');
+    setSelectedPlanId(planId);
+
+    const cachedToday = peekToday(planId);
+    const cachedPlan = peekPlan(planId);
+    if (cachedToday) setToday(cachedToday);
+    if (cachedPlan) setPlan(cachedPlan);
+
+    try {
+      const result = await offlineApi.selectPlan(token, planId);
+      if ('today' in result.data && result.data.today) setToday(result.data.today);
+      if ('plan' in result.data && result.data.plan) setPlan(result.data.plan);
+      const list = peekPlans();
+      if (list) {
+        setPlans(list.plans);
+        setSelectedPlanId(list.selectedPlanId);
+      }
+      if (!('today' in result.data) || !result.data.today) {
+        const todayResult = await offlineApi.getTodayWorkout(token, planId);
+        setToday(todayResult.data);
+      }
+      if (!('plan' in result.data) || !result.data.plan) {
+        const planResult = await offlineApi.getActivePlan(token, planId);
+        setPlan(planResult.data);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not switch plan');
+    } finally {
+      setSelectingId(null);
+    }
+  }
 
   const ready = today && !today.isRestDay && today.exercises.length > 0;
   const preview = today?.exercises?.[0];
@@ -149,7 +233,7 @@ export default function Dashboard() {
           </h1>
           <p className="mt-4 text-steel-muted max-w-md text-base md:text-lg leading-relaxed">
             {ready
-              ? `${today!.dayOfWeek} · ${today!.exercises.length} movements · ${today!.sessionDurationMinutes || profile?.sessionDurationMinutes || '—'} min`
+              ? `${today!.planName ? `${today!.planName} · ` : ''}${today!.dayOfWeek} · ${today!.exercises.length} movements · ${today!.sessionDurationMinutes || profile?.sessionDurationMinutes || '—'} min`
               : today?.isRestDay
                 ? 'No lifts scheduled. Browse exercise types or review your week below.'
                 : profile
@@ -175,6 +259,13 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      <PlanGrid
+        plans={plans}
+        selectedPlanId={selectedPlanId}
+        onSelect={handleSelectPlan}
+        selectingId={selectingId}
+      />
 
       {/* Plan journey: streak, week progress, upcoming — secondary to Today */}
       <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan && !plan} />
