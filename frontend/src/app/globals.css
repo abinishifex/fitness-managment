@@ -96,6 +96,21 @@ body {
   animation: fade-up 0.55s ease-out both;
 }
 
+@keyframes plan-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.plan-reveal {
+  animation: plan-reveal 0.35s ease-out both;
+}
+
 .animate-soft-pulse {
   animation: soft-pulse 1.6s ease-in-out infinite;
 }

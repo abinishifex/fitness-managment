@@ -177,6 +177,18 @@ describe('E2E chain: register → profile → generate → today', () => {
     if (!todayRes.body.data.isRestDay) {
       assert.ok(todayRes.body.data.exercises.length >= 1);
     }
+
+    const planRes = await request(baseUrl, 'GET', '/api/workouts/plan', {
+      token,
+    });
+    assert.equal(planRes.status, 200, JSON.stringify(planRes.body));
+    assert.equal(planRes.body.success, true);
+    assert.equal(String(planRes.body.data.planId), String(plan._id));
+    assert.ok(Array.isArray(planRes.body.data.days));
+    assert.ok(planRes.body.data.days.length >= 1);
+    assert.ok(planRes.body.data.todayDayOfWeek);
+    assert.ok(planRes.body.data.splitType);
+    assert.ok(typeof planRes.body.data.trainingDaysPerWeek === 'number');
   });
 
   it('rejects generate without a profile', async () => {
