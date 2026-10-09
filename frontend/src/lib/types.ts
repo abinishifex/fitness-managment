@@ -62,3 +62,16 @@ export type TodayWorkout = {
   splitType?: string;
   sessionDurationMinutes?: number;
 };
+
+export type ActivePlanDay = WorkoutDay & { isToday?: boolean };
+
+export type ActivePlan = {
+  planId: string;
+  splitType: string;
+  trainingDaysPerWeek: number;
+  sessionDurationMinutes: number;
+  weeklyVolumeTarget?: Record<string, number> | null;
+  aiReason?: string | null;
+  todayDayOfWeek: string;
+  days: ActivePlanDay[];
+};

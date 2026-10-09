@@ -1,4 +1,4 @@
-import type { AuthResponse, Exercise, Profile, TodayWorkout, WorkoutPlan } from './types';
+import type { ActivePlan, AuthResponse, Exercise, Profile, TodayWorkout, WorkoutPlan } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -31,6 +31,7 @@ export const api = {
   generatePlan: (token: string) =>
     request<{ plan: WorkoutPlan }>('/workouts/generate', { method: 'POST' }, token),
   getTodayWorkout: (token: string) => request<TodayWorkout>('/workouts/today', {}, token),
+  getActivePlan: (token: string) => request<ActivePlan>('/workouts/plan', {}, token),
   listExercises: (params: Record<string, string> = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request<{ count: number; exercises: Exercise[] }>(`/exercises${qs ? `?${qs}` : ''}`);

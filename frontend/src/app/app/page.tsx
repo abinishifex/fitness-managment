@@ -3,28 +3,64 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api, getToken } from '@/lib/api';
-import type { Profile, TodayWorkout } from '@/lib/types';
+import type { ActivePlan, Profile, TodayWorkout } from '@/lib/types';
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
+import { GeneralPlanOverview } from '@/components/workout/GeneralPlanOverview';
 import { getExerciseImage, WORKOUT_HERO } from '@/lib/exerciseMedia';
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [today, setToday] = useState<TodayWorkout | null>(null);
+  const [plan, setPlan] = useState<ActivePlan | null>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loadingToday, setLoadingToday] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState(true);
 
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      setLoading(false);
+      setLoadingToday(false);
+      setLoadingPlan(false);
       return;
     }
-    Promise.all([
-      api.getProfile(token).then((x) => setProfile(x.profile)).catch(() => null),
-      api.getTodayWorkout(token).then(setToday).catch(() => null),
-    ])
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+
+    let cancelled = false;
+
+    // Load Today first for faster initial render, then general plan.
+    (async () => {
+      try {
+        const [profileResult, todayResult] = await Promise.allSettled([
+          api.getProfile(token),
+          api.getTodayWorkout(token),
+        ]);
+
+        if (cancelled) return;
+
+        if (profileResult.status === 'fulfilled') {
+          setProfile(profileResult.value.profile);
+        }
+        if (todayResult.status === 'fulfilled') {
+          setToday(todayResult.value);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load today');
+      } finally {
+        if (!cancelled) setLoadingToday(false);
+      }
+
+      try {
+        const activePlan = await api.getActivePlan(token);
+        if (!cancelled) setPlan(activePlan);
+      } catch {
+        if (!cancelled) setPlan(null);
+      } finally {
+        if (!cancelled) setLoadingPlan(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const ready = today && !today.isRestDay && today.exercises.length > 0;
@@ -32,12 +68,17 @@ export default function Dashboard() {
   const heroImage = preview
     ? getExerciseImage(preview.exercise?.primaryMuscles || [])
     : WORKOUT_HERO;
+  const loading = loadingToday;
 
   return (
     <div className="space-y-8">
       {error && <div className="notice error">{error}</div>}
 
-      <section className="relative overflow-hidden border border-surface-highlight min-h-[420px] md:min-h-[480px] animate-fade-up">
+      {/* Primary: Today's Plan */}
+      <section
+        className="relative overflow-hidden border-2 border-signal-volt/50 min-h-[420px] md:min-h-[480px] animate-fade-up shadow-[0_0_40px_rgba(212,255,0,0.08)]"
+        aria-labelledby="today-plan-heading"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={heroImage}
@@ -49,21 +90,33 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_30%,rgba(212,255,0,0.18),transparent_40%)] animate-glow-sweep" />
 
         <div className="relative z-10 h-full min-h-[420px] md:min-h-[480px] flex flex-col justify-end p-6 md:p-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-surface-overlay/85 border border-signal-volt/40 px-3 py-1 mb-4 w-fit backdrop-blur-md">
-            <span className="w-2 h-2 rounded-full bg-signal-volt animate-ping" />
-            <span className="text-label-telemetry text-signal-volt uppercase tracking-widest text-[11px]">
-              {loading ? 'Syncing…' : ready ? 'Session ready' : today?.isRestDay ? 'Recovery day' : 'Protocol status'}
+          <div className="inline-flex items-center gap-2 bg-surface-overlay/85 border border-signal-volt/40 px-3 py-1.5 mb-4 w-fit backdrop-blur-md">
+            <span className="material-symbols-outlined text-signal-volt text-base" aria-hidden>
+              {ready ? 'fitness_center' : today?.isRestDay ? 'hotel' : 'schedule'}
+            </span>
+            <span className="w-2 h-2 rounded-full bg-signal-volt animate-ping" aria-hidden />
+            <span className="text-label-telemetry text-signal-volt uppercase tracking-widest text-[11px] font-bold">
+              {loading
+                ? 'Syncing…'
+                : ready
+                  ? "Today's plan"
+                  : today?.isRestDay
+                    ? 'Recovery day'
+                    : 'Protocol status'}
             </span>
           </div>
 
-          <h1 className="font-display-hero text-display-hero-mobile md:text-headline-xl uppercase text-steel-bright leading-none">
+          <h1
+            id="today-plan-heading"
+            className="font-display-hero text-display-hero-mobile md:text-headline-xl uppercase text-steel-bright leading-none"
+          >
             {ready ? 'Train now.' : today?.isRestDay ? 'Recover well.' : profile ? 'Build your plan.' : 'Set up training.'}
           </h1>
-          <p className="mt-4 text-steel-muted max-w-md text-sm md:text-base">
+          <p className="mt-4 text-steel-muted max-w-md text-base md:text-lg leading-relaxed">
             {ready
               ? `${today!.dayOfWeek} · ${today!.exercises.length} movements · ${today!.sessionDurationMinutes || profile?.sessionDurationMinutes || '—'} min`
               : today?.isRestDay
-                ? 'No lifts scheduled. Browse exercise types or review your profile.'
+                ? 'No lifts scheduled. Browse exercise types or review your week below.'
                 : profile
                   ? 'Generate a validated plan from onboarding to unlock today\'s workout.'
                   : 'Complete onboarding so FORGE can prescribe today\'s session.'}
@@ -71,10 +124,15 @@ export default function Dashboard() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              className="btn custom-glow"
-              href={ready ? '/app/workout' : profile ? '/app/onboarding' : '/app/onboarding'}
+              className="btn custom-glow text-base px-6 py-3"
+              href={ready ? '/app/workout' : '/app/onboarding'}
             >
-              {ready ? 'Start workout' : 'Initialize plan'}
+              <span className="inline-flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg" aria-hidden>
+                  {ready ? 'play_arrow' : 'rocket_launch'}
+                </span>
+                {ready ? 'Start workout' : 'Initialize plan'}
+              </span>
             </Link>
             <Link className="btn secondary" href="/app/exercises">
               Browse types
@@ -84,24 +142,46 @@ export default function Dashboard() {
       </section>
 
       {ready && (
-        <section className="animate-fade-up delay-100">
+        <section className="animate-fade-up delay-100" aria-labelledby="todays-lifts-heading">
           <div className="flex items-end justify-between gap-4 mb-4">
             <div>
-              <div className="eyebrow">Today&apos;s lifts</div>
-              <h2 className="font-headline-md text-steel-bright uppercase text-2xl mt-1">Your session queue</h2>
+              <div className="eyebrow inline-flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-signal-volt" aria-hidden>
+                  checklist
+                </span>
+                Today&apos;s lifts
+              </div>
+              <h2
+                id="todays-lifts-heading"
+                className="font-headline-md text-steel-bright uppercase text-2xl md:text-3xl mt-1"
+              >
+                Your session queue
+              </h2>
+              <p className="muted small mt-1">Next movement first — tap any card to open the tracker.</p>
             </div>
-            <Link href="/app/workout" className="text-label-telemetry text-signal-volt uppercase text-xs tracking-wider hover:underline">
-              Open tracker →
+            <Link
+              href="/app/workout"
+              className="text-label-telemetry text-signal-volt uppercase text-xs tracking-wider hover:underline inline-flex items-center gap-1"
+            >
+              Open tracker
+              <span className="material-symbols-outlined text-sm" aria-hidden>
+                arrow_forward
+              </span>
             </Link>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {today!.exercises.slice(0, 6).map((ex, i) => {
               const img = getExerciseImage(ex.exercise?.primaryMuscles || []);
+              const isNext = i === 0;
               return (
                 <Link
                   key={`${ex.exerciseId}-${i}`}
                   href="/app/workout"
-                  className="group relative overflow-hidden border border-surface-highlight h-44"
+                  className={`group relative overflow-hidden h-48 transition-shadow ${
+                    isNext
+                      ? 'border-2 border-signal-volt shadow-[0_0_24px_rgba(212,255,0,0.15)]'
+                      : 'border border-surface-highlight'
+                  }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -110,11 +190,26 @@ export default function Dashboard() {
                     className="absolute inset-0 w-full h-full object-cover brightness-[0.65] transition-transform duration-500 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-surface-base via-surface-base/30 to-transparent" />
+                  {isNext && (
+                    <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 bg-signal-volt text-surface-base px-2 py-1 text-[10px] font-label-telemetry uppercase tracking-wider font-bold">
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        bolt
+                      </span>
+                      Next up
+                    </span>
+                  )}
                   <div className="relative z-10 h-full flex flex-col justify-end p-4">
-                    <span className="text-label-telemetry text-signal-volt text-[10px] uppercase tracking-wider">
+                    <span className="text-label-telemetry text-signal-volt text-[11px] uppercase tracking-wider inline-flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        timer
+                      </span>
                       {String(i + 1).padStart(2, '0')} · {ex.sets}×{ex.reps}
                     </span>
-                    <h3 className="font-headline-md text-steel-bright uppercase text-lg leading-tight mt-1">
+                    <h3
+                      className={`font-headline-md text-steel-bright uppercase leading-tight mt-1 ${
+                        isNext ? 'text-xl md:text-2xl' : 'text-lg'
+                      }`}
+                    >
                       {ex.exercise?.name || `Exercise ${i + 1}`}
                     </h3>
                   </div>
@@ -125,36 +220,16 @@ export default function Dashboard() {
         </section>
       )}
 
-      <section className="animate-fade-up delay-150">
+      {/* Plan journey: streak, week progress, upcoming — secondary to Today */}
+      <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan} />
+
+      <section className="animate-fade-up delay-200">
         <div className="mb-4">
           <div className="eyebrow">Exercise types</div>
           <h2 className="font-headline-md text-steel-bright uppercase text-2xl mt-1">Train by pattern</h2>
-          <p className="muted small mt-1">AI visuals for each movement family — tap to explore the catalogue.</p>
+          <p className="muted small mt-1">Browse the catalogue when you want variety — your plan above stays the path.</p>
         </div>
         <ExerciseTypeGrid />
-      </section>
-
-      <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-up delay-200">
-        <div className="stat">
-          <span className="label">Days / week</span>
-          <strong>{profile?.trainingDaysPerWeek ?? '—'}</strong>
-          <span className="muted small">{profile?.trainingExperience || 'No profile'}</span>
-        </div>
-        <div className="stat">
-          <span className="label">Today</span>
-          <strong>{today?.isRestDay ? 'REST' : ready ? 'GO' : '—'}</strong>
-          <span className="muted small">{today?.dayOfWeek || 'No active plan'}</span>
-        </div>
-        <div className="stat">
-          <span className="label">Movements</span>
-          <strong>{today?.exercises.length ?? '—'}</strong>
-          <span className="muted small">Current session</span>
-        </div>
-        <div className="stat">
-          <span className="label">Session</span>
-          <strong>{profile?.sessionDurationMinutes ?? '—'}</strong>
-          <span className="muted small">Minutes target</span>
-        </div>
       </section>
     </div>
   );
