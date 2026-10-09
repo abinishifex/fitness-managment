@@ -141,6 +141,9 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Plan journey: streak, week progress, upcoming — secondary to Today */}
+      <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan} />
+
       {ready && (
         <section className="animate-fade-up delay-100" aria-labelledby="todays-lifts-heading">
           <div className="flex items-end justify-between gap-4 mb-4">
@@ -219,9 +222,6 @@ export default function Dashboard() {
           </div>
         </section>
       )}
-
-      {/* Plan journey: streak, week progress, upcoming — secondary to Today */}
-      <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan} />
 
       <section className="animate-fade-up delay-200">
         <div className="mb-4">
