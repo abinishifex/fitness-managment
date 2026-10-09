@@ -13,7 +13,7 @@ function errorHandler(err, req, res, next) {
   const body = {
     success: false,
     error: {
-      message: err.message || 'Internal Server Error',
+      message: err.message || 'Internal Server Error',      
       code: err.code || undefined,
     },
   };
