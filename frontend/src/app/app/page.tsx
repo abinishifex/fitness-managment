@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { api, getToken } from '@/lib/api';
+import { getToken } from '@/lib/api';
 import type { ActivePlan, Profile, TodayWorkout } from '@/lib/types';
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
 import { GeneralPlanOverview } from '@/components/workout/GeneralPlanOverview';
 import { getExerciseImage, WORKOUT_HERO } from '@/lib/exerciseMedia';
+import { offlineApi, peekPlan, peekProfile, peekToday } from '@/lib/offline';
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -17,6 +18,21 @@ export default function Dashboard() {
   const [loadingPlan, setLoadingPlan] = useState(true);
 
   useEffect(() => {
+    // Instant hydrate from device cache (after mount to avoid SSR mismatch)
+    const cachedProfile = peekProfile()?.profile ?? null;
+    const cachedToday = peekToday();
+    const cachedPlan = peekPlan();
+    if (cachedProfile) setProfile(cachedProfile);
+    if (cachedToday) {
+      setToday(cachedToday);
+      setLoadingToday(false);
+    }
+    if (cachedPlan) {
+      setPlan(cachedPlan);
+      setLoadingPlan(false);
+    }
+    if (cachedProfile && !cachedToday) setLoadingToday(false);
+
     const token = getToken();
     if (!token) {
       setLoadingToday(false);
@@ -26,40 +42,59 @@ export default function Dashboard() {
 
     let cancelled = false;
 
-    // Load Today first for faster initial render, then general plan.
-    (async () => {
+    async function load() {
       try {
         const [profileResult, todayResult] = await Promise.allSettled([
-          api.getProfile(token),
-          api.getTodayWorkout(token),
+          offlineApi.getProfile(token!),
+          offlineApi.getTodayWorkout(token!),
         ]);
 
         if (cancelled) return;
 
         if (profileResult.status === 'fulfilled') {
-          setProfile(profileResult.value.profile);
+          setProfile(profileResult.value.data.profile);
         }
         if (todayResult.status === 'fulfilled') {
-          setToday(todayResult.value);
+          setToday(todayResult.value.data);
+        } else if (!peekToday()) {
+          setError(
+            todayResult.reason instanceof Error
+              ? todayResult.reason.message
+              : 'Failed to load today',
+          );
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load today');
+        if (!cancelled && !peekToday()) {
+          setError(e instanceof Error ? e.message : 'Failed to load today');
+        }
       } finally {
         if (!cancelled) setLoadingToday(false);
       }
 
       try {
-        const activePlan = await api.getActivePlan(token);
-        if (!cancelled) setPlan(activePlan);
+        const activePlan = await offlineApi.getActivePlan(token!);
+        if (!cancelled) setPlan(activePlan.data);
       } catch {
-        if (!cancelled) setPlan(null);
+        if (!cancelled && !peekPlan()) setPlan(null);
       } finally {
         if (!cancelled) setLoadingPlan(false);
       }
-    })();
+    }
+
+    void load();
+
+    function onCacheUpdated() {
+      const t = getToken();
+      if (!t) return;
+      void offlineApi.getTodayWorkout(t).then((r) => setToday(r.data));
+      void offlineApi.getActivePlan(t).then((r) => setPlan(r.data));
+      void offlineApi.getProfile(t).then((r) => setProfile(r.data.profile));
+    }
+    window.addEventListener('forge:cache-updated', onCacheUpdated);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('forge:cache-updated', onCacheUpdated);
     };
   }, []);
 
@@ -68,7 +103,7 @@ export default function Dashboard() {
   const heroImage = preview
     ? getExerciseImage(preview.exercise?.primaryMuscles || [])
     : WORKOUT_HERO;
-  const loading = loadingToday;
+  const loading = loadingToday && !today;
 
   return (
     <div className="space-y-8">
@@ -142,7 +177,7 @@ export default function Dashboard() {
       </section>
 
       {/* Plan journey: streak, week progress, upcoming — secondary to Today */}
-      <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan} />
+      <GeneralPlanOverview plan={plan} today={today} loading={loadingPlan && !plan} />
 
       {ready && (
         <section className="animate-fade-up delay-100" aria-labelledby="todays-lifts-heading">

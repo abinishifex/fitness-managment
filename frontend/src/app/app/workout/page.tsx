@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { api, getToken } from '@/lib/api';
+import { getToken } from '@/lib/api';
 import type { TodayWorkout } from '@/lib/types';
 import { WorkoutPlayer } from '@/components/workout/WorkoutPlayer';
 import { WORKOUT_HERO } from '@/lib/exerciseMedia';
+import { offlineApi, peekToday } from '@/lib/offline';
 
 export default function Workout() {
   const [workout, setWorkout] = useState<TodayWorkout | null>(null);
@@ -13,17 +14,46 @@ export default function Workout() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const cached = peekToday();
+    if (cached) {
+      setWorkout(cached);
+      setLoading(false);
+    }
+
     const token = getToken();
     if (!token) {
       setLoading(false);
-      setError('Sign in to load your session.');
+      if (!cached) setError('Sign in to load your session.');
       return;
     }
-    api
+
+    let cancelled = false;
+
+    offlineApi
       .getTodayWorkout(token)
-      .then(setWorkout)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .then((result) => {
+        if (!cancelled) setWorkout(result.data);
+      })
+      .catch((e) => {
+        if (!cancelled && !peekToday()) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    function onCacheUpdated() {
+      const t = getToken();
+      if (!t) return;
+      void offlineApi.getTodayWorkout(t).then((r) => {
+        if (!cancelled) setWorkout(r.data);
+      });
+    }
+    window.addEventListener('forge:cache-updated', onCacheUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('forge:cache-updated', onCacheUpdated);
+    };
   }, []);
 
   if (loading) {

@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { api } from '@/lib/api';
 import type { Exercise } from '@/lib/types';
 import {
   EXERCISE_TYPES,
@@ -12,6 +11,7 @@ import {
   type ExerciseTypeKey,
 } from '@/lib/exerciseMedia';
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
+import { offlineApi, peekExercises } from '@/lib/offline';
 
 function ExercisesContent() {
   const params = useSearchParams();
@@ -22,11 +22,17 @@ function ExercisesContent() {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    api
+    const cached = peekExercises();
+    if (cached?.exercises?.length) {
+      setExercises(cached.exercises);
+      setLoading(false);
+    }
+    offlineApi
       .listExercises({ limit: '100' })
-      .then((data) => setExercises(data.exercises))
-      .catch((e) => setError(e.message))
+      .then((result) => setExercises(result.data.exercises))
+      .catch((e) => {
+        if (!peekExercises()?.exercises?.length) setError(e.message);
+      })
       .finally(() => setLoading(false));
   }, []);
 
