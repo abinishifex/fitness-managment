@@ -5,6 +5,7 @@ import { api, getToken } from '@/lib/api';
 import type { Profile } from '@/lib/types';
 import MultiSelectDropdown from '@/components/MultiSelectDropdown';
 import { MUSCLE_OPTIONS } from '@/lib/muscleOptions';
+import EquipmentImage from '@/components/EquipmentImage';
 
 const initial: Profile = {
   age: 25,
@@ -15,15 +16,47 @@ const initial: Profile = {
   trainingExperience: 'beginner',
   trainingDaysPerWeek: 3,
   sessionDurationMinutes: 45,
-  equipmentAvailable: ['bodyweight'],
+  equipmentAvailable: [],   // bodyweight is always injected at submit; never shown as a card
   priorityMuscleGroup: '',
   limitations: [],
 };
 
-const equipment = [
-  'none', 'bodyweight', 'dumbbell', 'barbell', 'machine',
-  'cable_machine', 'resistance_bands', 'kettlebell', 'bench', 'pull_up_bar',
+/**
+ * Equipment cards shown in the UI — 9 items (3×3 grid).
+ * "bodyweight" is intentionally omitted: it is always injected into the submit
+ * payload automatically so the rules engine always has at least one equipment
+ * class to work with.  "none" means "I have no gear" and maps to bodyweight-only
+ * exercises server-side.
+ *
+ * Values must match EQUIPMENT_VALUES in server/src/database/models/MemberProfile.js.
+ */
+const EQUIPMENT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'none',             label: 'No equipment' },
+  { value: 'dumbbell',         label: 'Dumbbell' },
+  { value: 'barbell',          label: 'Barbell' },
+  { value: 'machine',          label: 'Machine' },
+  { value: 'cable_machine',    label: 'Cable machine' },
+  { value: 'resistance_bands', label: 'Resistance bands' },
+  { value: 'kettlebell',       label: 'Kettlebell' },
+  { value: 'bench',            label: 'Bench' },
+  { value: 'pull_up_bar',      label: 'Pull-up bar' },
 ];
+
+/**
+ * Strip "bodyweight" from a stored equipmentAvailable array before showing it
+ * in the UI (bodyweight is always injected at submit, never shown as a card).
+ *
+ * Edge cases:
+ *  - ["bodyweight"]          → ["none"]  (older profiles: map to "No equipment")
+ *  - ["bodyweight","barbell"]→ ["barbell"] (just strip the implicit entry)
+ *  - []                      → []
+ *  - unknown values are kept (future-proof; FallbackIcon handles display)
+ */
+function normalizeEquipmentForDisplay(stored: string[]): string[] {
+  const without = stored.filter((v) => v !== 'bodyweight');
+  // If stripping bodyweight left nothing, the profile was bodyweight-only → "none"
+  return without.length === 0 && stored.includes('bodyweight') ? ['none'] : without;
+}
 
 export default function Onboarding() {
   const router = useRouter();
@@ -48,13 +81,18 @@ export default function Onboarding() {
     setBusy(true);
     setError('');
     try {
-      // Omit priorityMuscleGroup from payload when nothing is selected
       const payload: Profile = { ...data };
       if (selectedMuscles.length === 0) {
         delete payload.priorityMuscleGroup;
       } else {
         payload.priorityMuscleGroup = selectedMuscles.join(',');
       }
+      // Always include "bodyweight" so the rules engine always has at least one
+      // equipment class to match against (bodyweight exercises are the safety baseline).
+      // Dedup with Set so we never double-send it.
+      payload.equipmentAvailable = [
+        ...new Set([...payload.equipmentAvailable, 'bodyweight']),
+      ];
       await api.saveProfile(t, payload);
       await api.generatePlan(t);
       router.push('/app');
@@ -186,23 +224,53 @@ export default function Onboarding() {
             <div className="field">
               <label>Available equipment</label>
               <div className="grid3">
-                {equipment.map((item) => (
-                  <label className="card small" key={item}>
-                    <input
-                      type="checkbox"
-                      checked={data.equipmentAvailable.includes(item)}
-                      onChange={(e) =>
-                        update(
-                          'equipmentAvailable',
-                          e.target.checked
-                            ? [...data.equipmentAvailable, item]
-                            : data.equipmentAvailable.filter((x) => x !== item),
-                        )
-                      }
-                    />{' '}
-                    {item.replaceAll('_', ' ')}
-                  </label>
-                ))}
+                {EQUIPMENT_OPTIONS.map(({ value, label }) => {
+                  const selected = data.equipmentAvailable.includes(value);
+                  return (
+                    <label
+                      key={value}
+                      className={[
+                        'card small',
+                        'flex flex-col items-center gap-2 cursor-pointer select-none',
+                        'relative transition-colors',
+                        // focus ring appears when the hidden checkbox is focused
+                        'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#D4FF00] has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-[#111417]',
+                        selected
+                          ? 'border-[#D4FF00] text-[#D4FF00]'
+                          : 'border-[#444932] text-[#8E98A0]',
+                      ].join(' ')}
+                    >
+                      {/* visually hidden but real checkbox — keyboard/SR accessible */}
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={selected}
+                        onChange={(e) => {
+                          if (value === 'none') {
+                            // Clicking "none" makes selection exactly ["none"]
+                            update('equipmentAvailable', e.target.checked ? ['none'] : []);
+                          } else if (e.target.checked) {
+                            // Adding any real equipment: remove "none" if present
+                            update(
+                              'equipmentAvailable',
+                              [
+                                ...data.equipmentAvailable.filter((x) => x !== 'none'),
+                                value,
+                              ],
+                            );
+                          } else {
+                            update(
+                              'equipmentAvailable',
+                              data.equipmentAvailable.filter((x) => x !== value),
+                            );
+                          }
+                        }}
+                      />
+                      <EquipmentImage value={value} alt="" selected={selected} />
+                      <span className="text-xs text-center leading-tight">{label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
             <div className="field">
@@ -222,8 +290,7 @@ export default function Onboarding() {
               />
             </div>
             <div className="notice">
-              The backend safety validator checks equipment, volume, session duration, and
-              limitations before activating the plan.
+             We check your equipment, workout level, and time to create a safe plan.
             </div>
           </>
         )}
