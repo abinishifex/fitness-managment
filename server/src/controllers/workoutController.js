@@ -69,6 +69,68 @@ function parseTrainingPatch(body = {}) {
 
 const PLAN_ACTIONS = ['KEEP', 'SWAP', 'ADD', 'REMOVE'];
 
+const WEEKDAY_NAMES = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+const WEEKDAY_ALIASES = {
+  monday: 'Monday',
+  mon: 'Monday',
+  tuesday: 'Tuesday',
+  tue: 'Tuesday',
+  tues: 'Tuesday',
+  wednesday: 'Wednesday',
+  wed: 'Wednesday',
+  thursday: 'Thursday',
+  thu: 'Thursday',
+  thur: 'Thursday',
+  thurs: 'Thursday',
+  friday: 'Friday',
+  fri: 'Friday',
+  saturday: 'Saturday',
+  sat: 'Saturday',
+  sunday: 'Sunday',
+  sun: 'Sunday',
+};
+
+const NUMBER_TO_WEEKDAY = {
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
+  7: 'Sunday',
+};
+
+function normalizeDayOfWeek(value, dayIndex) {
+  if (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(String(value).trim()))) {
+    const n = Number(value);
+    const name = NUMBER_TO_WEEKDAY[n];
+    if (!name) {
+      throw createError(400, `days[${dayIndex}].dayOfWeek must be 1–7 or a weekday name`);
+    }
+    return name;
+  }
+  const key = String(value).trim().toLowerCase();
+  if (WEEKDAY_ALIASES[key]) return WEEKDAY_ALIASES[key];
+  const dayN = key.match(/^day\s*(\d+)$/);
+  if (dayN) {
+    const name = NUMBER_TO_WEEKDAY[Number(dayN[1])];
+    if (name) return name;
+  }
+  throw createError(
+    400,
+    `days[${dayIndex}].dayOfWeek must be one of: ${WEEKDAY_NAMES.join(', ')} (or 1–7)`
+  );
+}
+
 function parseDaysPatch(body = {}) {
   if (body.days == null) return null;
   if (!Array.isArray(body.days)) {
@@ -93,7 +155,7 @@ function parseDaysPatch(body = {}) {
     }
 
     return {
-      dayOfWeek: day.dayOfWeek,
+      dayOfWeek: normalizeDayOfWeek(day.dayOfWeek, dayIndex),
       exercises: day.exercises.map((ex, exIndex) => {
         if (!ex || typeof ex !== 'object') {
           throw createError(400, `days[${dayIndex}].exercises[${exIndex}] must be an object`);

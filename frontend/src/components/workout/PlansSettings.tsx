@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { getToken } from '@/lib/api';
 import type { FitnessGoal, PlanSummary, PlanTrainingInput, TrainingExperience } from '@/lib/types';
 import { offlineApi, peekPlans, useSyncStatus } from '@/lib/offline';
@@ -10,11 +11,11 @@ import {
   formatPlanTrainingSummary,
 } from './PlanTrainingFields';
 import {
-  PlanAiResponseFields,
+  PlanDaysEditor,
   daysFromActivePlan,
   daysToPatch,
   type EditDayRow,
-} from './PlanAiResponseFields';
+} from './PlanDaysEditor';
 
 const SPLIT_LABELS: Record<string, string> = {
   full_body: 'Full body',
@@ -48,6 +49,7 @@ export function PlansSettings() {
   const [editName, setEditName] = useState('');
   const [editNote, setEditNote] = useState('');
   const [editAiReason, setEditAiReason] = useState('');
+  const [planToDelete, setPlanToDelete] = useState<PlanSummary | null>(null);
   const [editTraining, setEditTraining] = useState<PlanTrainingInput>(DEFAULT_PLAN_TRAINING);
   const [editDays, setEditDays] = useState<EditDayRow[] | null>(null);
   const [editDaysLoading, setEditDaysLoading] = useState(false);
@@ -150,19 +152,31 @@ export function PlansSettings() {
     }
   }
 
+  function handleEditDaysChange(next: EditDayRow[]) {
+    setEditDays(next);
+    setEditTraining((prev) => ({
+      ...prev,
+      trainingDaysPerWeek: next.length === 0 ? 1 : Math.min(7, next.length),
+    }));
+  }
+
   async function saveEdit(planId: string) {
     const token = getToken();
     if (!token) return;
     setBusyId(planId);
     setError('');
     try {
+      const daysPerWeek =
+        editDays && editDays.length > 0
+          ? Math.min(7, editDays.length)
+          : editTraining.trainingDaysPerWeek;
       const result = await offlineApi.updatePlan(token, planId, {
         name: editName.trim(),
         note: editNote.trim(),
         aiReason: editAiReason.trim(),
         fitnessGoal: editTraining.fitnessGoal,
         trainingExperience: editTraining.trainingExperience,
-        trainingDaysPerWeek: editTraining.trainingDaysPerWeek,
+        trainingDaysPerWeek: daysPerWeek,
         sessionDurationMinutes: editTraining.sessionDurationMinutes,
         priorityMuscleGroup: editTraining.priorityMuscleGroup || '',
         ...(editDays ? { days: daysToPatch(editDays) } : {}),
@@ -178,7 +192,7 @@ export function PlansSettings() {
       setMessage(
         result.queued
           ? 'Saved offline — will sync later.'
-          : 'Plan updated (training prefs + AI response fields).',
+          : 'Plan updated (schedule + exercises + training prefs).',
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update plan');
@@ -251,7 +265,6 @@ export function PlansSettings() {
   }
 
   async function removePlan(plan: PlanSummary) {
-    if (!window.confirm(`Delete “${plan.name || 'Untitled plan'}”? This cannot be undone.`)) return;
     const token = getToken();
     if (!token) return;
     setBusyId(plan.planId);
@@ -265,6 +278,7 @@ export function PlansSettings() {
         if (list) applyList(list);
       }
       setMessage(result.queued ? 'Delete queued — will sync later.' : 'Plan deleted.');
+      setPlanToDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not delete plan');
     } finally {
@@ -274,6 +288,20 @@ export function PlansSettings() {
 
   return (
     <section className="space-y-4" aria-labelledby="plans-settings-heading">
+      <ConfirmModal
+        open={planToDelete !== null}
+        title="Delete plan"
+        message={
+          planToDelete
+            ? `Delete “${planToDelete.name || 'Untitled plan'}”? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (planToDelete) void removePlan(planToDelete);
+        }}
+        onCancel={() => setPlanToDelete(null)}
+      />
       <p id="plans-settings-heading" className="muted small">
         Manage protocols. Each plan has its own goal, experience, days, and priorities.
         Activate to show in Train and Workout; select by tapping a card on Train.
@@ -350,12 +378,12 @@ export function PlansSettings() {
                       <PlanTrainingFields value={editTraining} onChange={setEditTraining} compact />
                     </div>
 
-                    <PlanAiResponseFields
+                    <PlanDaysEditor
                       planId={plan.planId}
                       aiReason={editAiReason}
                       onAiReasonChange={setEditAiReason}
                       days={editDays}
-                      onDaysChange={setEditDays}
+                      onDaysChange={handleEditDaysChange}
                       loading={editDaysLoading}
                     />
 
@@ -389,8 +417,8 @@ export function PlansSettings() {
                       </button>
                     </div>
                     <p className="muted small">
-                      Save writes training prefs and AI response fields (reason, sets/reps/RPE/rest).
-                      Regenerate rebuilds exercises from the training form (keeps this plan id).
+                      Save writes the week schedule, exercises, and training prefs. Regenerate
+                      rebuilds exercises from the training form (keeps this plan id).
                     </p>
                   </div>
                 ) : (
@@ -447,7 +475,7 @@ export function PlansSettings() {
                         type="button"
                         className="btn secondary"
                         disabled={busy}
-                        onClick={() => void removePlan(plan)}
+                        onClick={() => setPlanToDelete(plan)}
                       >
                         Delete
                       </button>
