@@ -13,24 +13,26 @@ const memberProfileSchema = new mongoose.Schema({
     unique: true,
     index: true
   },
+  name: { type: String, trim: true, maxlength: 80, default: '' },
   age: { type: Number, required: true },
   sex: { type: String, enum: ['male', 'female'], required: true },
   weightKg: { type: Number, required: true },
   heightCm: { type: Number, required: true },
+  // Legacy defaults only — training intent lives on WorkoutPlan per protocol.
   fitnessGoal: {
     type: String,
     enum: ['muscle_gain', 'fat_loss', 'general_fitness', 'strength'],
-    required: true
+    default: 'general_fitness',
   },
   trainingExperience: {
     type: String,
     enum: ['beginner', 'intermediate', 'advanced'],
-    required: true
+    default: 'beginner',
   },
-  trainingDaysPerWeek: { type: Number, required: true },
-  sessionDurationMinutes: { type: Number, required: true },
+  trainingDaysPerWeek: { type: Number, default: 3 },
+  sessionDurationMinutes: { type: Number, default: 45 },
   equipmentAvailable: [{ type: String, enum: EQUIPMENT_VALUES }],
-  priorityMuscleGroup: { type: String },
+  priorityMuscleGroup: { type: String, default: '' },
   limitations: [{ type: String }]
 }, { timestamps: true });
 

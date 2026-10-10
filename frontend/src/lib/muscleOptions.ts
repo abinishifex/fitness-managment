@@ -1,6 +1,6 @@
 /**
  * Shared muscle-group options and helpers.
- * Imported by both onboarding and profile pages.
+ * Used for plan-scoped priority muscles (onboarding + Plans settings).
  */
 
 export const MUSCLE_OPTIONS = [

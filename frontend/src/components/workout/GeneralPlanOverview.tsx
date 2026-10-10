@@ -398,7 +398,10 @@ export function GeneralPlanOverview({ plan, today, loading }: Props) {
               </h2>
               <p className="mt-3 text-steel-muted text-sm md:text-base leading-relaxed">{loveLine}</p>
               <p className="mt-2 text-[11px] font-label-telemetry uppercase tracking-wider text-steel-muted">
-                {splitLabel} · {plan.trainingDaysPerWeek} days · {plan.sessionDurationMinutes} min
+                {splitLabel}
+                {plan.fitnessGoal ? ` · ${String(plan.fitnessGoal).replaceAll('_', ' ')}` : ''}
+                {plan.trainingExperience ? ` · ${plan.trainingExperience}` : ''}
+                {` · ${plan.trainingDaysPerWeek} days · ${plan.sessionDurationMinutes} min`}
               </p>
             </div>
 

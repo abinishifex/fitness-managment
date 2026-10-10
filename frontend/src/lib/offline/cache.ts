@@ -3,6 +3,8 @@ export const CACHE_KEYS = {
   today: 'forge_cache:today',
   plan: 'forge_cache:plan',
   exercises: 'forge_cache:exercises',
+  plans: 'forge_cache:plans',
+  selectedPlanId: 'forge_cache:selectedPlanId',
 } as const;
 
 export type CacheKey = (typeof CACHE_KEYS)[keyof typeof CACHE_KEYS];
@@ -50,11 +52,22 @@ export function removeCached(key: string) {
   localStorage.removeItem(key);
 }
 
+export function todayCacheKey(planId: string) {
+  return `${CACHE_KEYS.today}:${planId}`;
+}
+
+export function planCacheKey(planId: string) {
+  return `${CACHE_KEYS.plan}:${planId}`;
+}
+
 export function clearOfflineCache() {
   if (!canUseStorage()) return;
-  for (const key of Object.values(CACHE_KEYS)) {
-    localStorage.removeItem(key);
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('forge_cache:')) toRemove.push(key);
   }
+  for (const key of toRemove) localStorage.removeItem(key);
 }
 
 /** Local calendar date YYYY-MM-DD */
