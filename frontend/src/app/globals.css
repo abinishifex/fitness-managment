@@ -145,13 +145,18 @@ body {
 }
 
 .side-nav-button {
-  padding: 13px 12px;
+  width: 100%;
+  padding: 10px 12px;
   color: var(--muted);
   border: 0;
   background: none;
   text-align: left;
   cursor: pointer;
   font: inherit;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .side-nav-button:hover {
@@ -254,33 +259,71 @@ body {
 }
 .app-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
 }
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   border-right: 1px solid var(--line);
-  padding: 24px 16px;
+  background: var(--surface);
+  padding: 20px 14px;
+}
+.sidebar-header {
+  flex-shrink: 0;
+  padding: 4px 10px 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
 }
 .sidebar .brand {
-  margin: 0 10px 46px;
+  margin: 0;
+  font-size: 28px;
+  line-height: 1;
 }
 .side-nav {
-  display: grid;
-  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
 }
 .side-nav a {
-  padding: 13px 12px;
+  display: block;
+  padding: 11px 12px;
   color: var(--muted);
+  border-left: 2px solid transparent;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
-.side-nav a.active,
 .side-nav a:hover {
-  background: var(--volt);
-  color: #111;
+  background: var(--panel2);
+  color: var(--text);
+}
+.side-nav a.active {
+  background: rgba(212, 255, 0, 0.1);
+  color: var(--volt);
+  border-left-color: var(--volt);
+}
+.sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 .main {
   padding: 34px;
   max-width: 1300px;
   width: 100%;
+  min-width: 0;
 }
 .sync-banner {
   margin: 0 0 16px;
@@ -451,15 +494,21 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #111417;
+    background: var(--surface);
     border-top: 1px solid var(--line);
     justify-content: space-around;
-    padding: 10px 4px;
+    gap: 2px;
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
   }
   .mobile-nav a {
+    flex: 1;
     font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--muted);
     text-align: center;
+    padding: 10px 4px;
   }
   .mobile-nav a.active {
     color: var(--volt);

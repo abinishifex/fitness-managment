@@ -53,23 +53,27 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <Brand />
-        <nav className="side-nav">
+        <div className="sidebar-header">
+          <Brand />
+        </div>
+        <nav className="side-nav" aria-label="Primary">
           {links.map(([href, label]) => (
             <Link key={href} className={isActive(href) ? 'active' : ''} href={href}>
               {label}
             </Link>
           ))}
+        </nav>
+        <div className="sidebar-footer">
           <button type="button" className="side-nav-button" onClick={logout}>
             Sign out
           </button>
-        </nav>
+        </div>
       </aside>
       <main className="main">
         <SyncBanner />
         {children}
       </main>
-      <nav className="mobile-nav">
+      <nav className="mobile-nav" aria-label="Primary mobile">
         {links.map(([href, label]) => (
           <Link key={href} className={isActive(href) ? 'active' : ''} href={href}>
             {label}
