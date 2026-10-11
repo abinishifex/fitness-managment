@@ -111,13 +111,23 @@ export type ExerciseMedia = {
 type DemoAsset = { video?: string; poster?: string };
 
 const CHEST_DIR = '/videos/chest';
+const BACK_DIR = '/videos/back';
+
+function mediaFile(dir: string, filename: string): string {
+  return `${dir}/${encodeURIComponent(filename)}`;
+}
 
 function chestFile(filename: string): string {
-  return `${CHEST_DIR}/${encodeURIComponent(filename)}`;
+  return mediaFile(CHEST_DIR, filename);
+}
+
+function backFile(filename: string): string {
+  return mediaFile(BACK_DIR, filename);
 }
 
 /** Demo clips / stills keyed by catalogue slug (and common name aliases). */
 const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
+  // —— Chest ——
   'barbell-bench-press': {
     video: chestFile('Barbell Bench Press.mp4'),
     poster: chestFile('Barbell Bench Press.jpg'),
@@ -139,6 +149,40 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
     poster: chestFile('Machine Chest Press.jpg'),
   },
   'incline-dumbbell-press': { poster: chestFile('Incline Dumbbell Press.jpg') },
+
+  // —— Back ——
+  'conventional-deadlift': {
+    video: backFile('Conventional Deadlift.mp4'),
+    poster: backFile('Conventional Deadlift.jpg'),
+  },
+  'barbell-bent-over-row': {
+    video: backFile('Barbell Bent-Over Row.mp4'),
+    poster: backFile('Barbell Bent-Over Row.jpg'),
+  },
+  'chest-supported-dumbbell-row': {
+    video: backFile('Chest-Supported Dumbbell Row.mp4'),
+    poster: backFile('Chest-Supported Dumbbell Row.jpg'),
+  },
+  'seated-cable-row': {
+    video: backFile('Seated Cable Row.mp4'),
+    poster: backFile('Seated Cable Row.jpg'),
+  },
+  'lat-pulldown': {
+    video: backFile('Lat Pulldown.mp4'),
+    poster: backFile('Lat Pulldown.jpg'),
+  },
+  'pull-up': {
+    video: backFile('Pull-Up.mp4'),
+    poster: backFile('Pull-Up.jpg'),
+  },
+  'assisted-pull-up': {
+    video: backFile('Assisted Pull-Up.mp4'),
+    poster: backFile('Assisted Pull-Up.jpg'),
+  },
+  'single-arm-dumbbell-row': {
+    video: backFile('Single-Arm Dumbbell Row.mp4'),
+    poster: backFile('Single-Arm Dumbbell Row.jpg'),
+  },
 };
 
 const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
@@ -148,6 +192,19 @@ const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
   'dumbbell fly': EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
   'machine chest press': EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
   'incline dumbbell press': EXERCISE_DEMO_BY_SLUG['incline-dumbbell-press'],
+  'conventional deadlift': EXERCISE_DEMO_BY_SLUG['conventional-deadlift'],
+  'barbell bent-over row': EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
+  'barbell bent over row': EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
+  'chest-supported dumbbell row': EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
+  'chest supported dumbbell row': EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
+  'seated cable row': EXERCISE_DEMO_BY_SLUG['seated-cable-row'],
+  'lat pulldown': EXERCISE_DEMO_BY_SLUG['lat-pulldown'],
+  'pull-up': EXERCISE_DEMO_BY_SLUG['pull-up'],
+  'pull up': EXERCISE_DEMO_BY_SLUG['pull-up'],
+  'assisted pull-up': EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
+  'assisted pull up': EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
+  'single-arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
+  'single arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
 };
 
 function normalizeKey(value: string): string {

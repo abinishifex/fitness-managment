@@ -7,7 +7,7 @@ import type { ActivePlan, PlanSummary, Profile, TodayWorkout } from '@/lib/types
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
 import { GeneralPlanOverview } from '@/components/workout/GeneralPlanOverview';
 import { PlanGrid } from '@/components/workout/PlanGrid';
-import { getExerciseImage, WORKOUT_HERO } from '@/lib/exerciseMedia';
+import { getExerciseMedia, WORKOUT_HERO } from '@/lib/exerciseMedia';
 import {
   offlineApi,
   peekPlan,
@@ -185,7 +185,7 @@ export default function Dashboard() {
   const ready = today && !today.isRestDay && today.exercises.length > 0;
   const preview = today?.exercises?.[0];
   const heroImage = preview
-    ? getExerciseImage(preview.exercise?.primaryMuscles || [])
+    ? getExerciseMedia(preview.exercise?.primaryMuscles || [], preview.exercise).image
     : WORKOUT_HERO;
   const loading = loadingToday && !today;
 
@@ -300,7 +300,7 @@ export default function Dashboard() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {today!.exercises.slice(0, 6).map((ex, i) => {
-              const img = getExerciseImage(ex.exercise?.primaryMuscles || []);
+              const img = getExerciseMedia(ex.exercise?.primaryMuscles || [], ex.exercise).image;
               const isNext = i === 0;
               return (
                 <Link

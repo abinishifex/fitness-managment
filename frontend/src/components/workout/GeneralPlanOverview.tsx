@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ActivePlan, ActivePlanDay, TodayWorkout, WorkoutExercise } from '@/lib/types';
-import { getExerciseImage, resolveExerciseType } from '@/lib/exerciseMedia';
+import { getExerciseMedia, resolveExerciseType } from '@/lib/exerciseMedia';
 import {
   completedDatesSet,
   computeTrainingStreak,
@@ -67,8 +67,12 @@ function focusFromExercises(exercises: WorkoutExercise[]) {
   if (!exercises.length) {
     return { label: 'Rest', image: '/exercises/fullbody.jpg' };
   }
-  const type = resolveExerciseType(exercises[0]?.exercise?.primaryMuscles || []);
-  return { label: type.label, image: getExerciseImage(exercises[0]?.exercise?.primaryMuscles || []) };
+  const first = exercises[0]?.exercise;
+  const type = resolveExerciseType(first?.primaryMuscles || []);
+  return {
+    label: type.label,
+    image: getExerciseMedia(first?.primaryMuscles || [], first).image,
+  };
 }
 
 function buildJourney(
