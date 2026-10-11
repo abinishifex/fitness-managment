@@ -113,6 +113,7 @@ type DemoAsset = { video?: string; poster?: string };
 const CHEST_DIR = '/videos/chest';
 const BACK_DIR = '/videos/back';
 const LEGS_DIR = '/videos/legs';
+const SHOULDERS_DIR = '/videos/shoulder';
 
 function mediaFile(dir: string, filename: string): string {
   return `${dir}/${encodeURIComponent(filename)}`;
@@ -128,6 +129,10 @@ function backFile(filename: string): string {
 
 function legsFile(filename: string): string {
   return mediaFile(LEGS_DIR, filename);
+}
+
+function shouldersFile(filename: string): string {
+  return mediaFile(SHOULDERS_DIR, filename);
 }
 
 /** Demo clips / stills keyed by catalogue slug (and common name aliases). */
@@ -152,6 +157,10 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
   'machine-chest-press': {
     video: chestFile('Machine Chest Press.mp4'),
     poster: chestFile('Machine Chest Press.jpg'),
+  },
+  'push-up': {
+    video: chestFile('Push-Up.mp4'),
+    poster: chestFile('Push-Up.jpg'),
   },
   'incline-dumbbell-press': { poster: chestFile('Incline Dumbbell Press.jpg') },
 
@@ -206,6 +215,10 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
     video: legsFile('Hack Squat.mp4'),
     poster: legsFile('Hack Squat.jpg'),
   },
+  'leg-press': {
+    video: legsFile('Leg Press.mp4'),
+    poster: legsFile('Leg Press.jpg'),
+  },
   'bulgarian-split-squat': {
     video: legsFile('Bulgarian Split Squat.mp4'),
     poster: legsFile('Bulgarian Split Squat.jpg'),
@@ -238,10 +251,48 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
     video: legsFile('Kettlebell Swing.mp4'),
     poster: legsFile('Kettlebell Swing.jpg'),
   },
-  // Asset lives under /videos/legs for now
+  'dumbbell-walking-lunge': {
+    video: legsFile('Dumbbell Walking Lunge.mp4'),
+    poster: legsFile('Dumbbell Walking Lunge.jpg'),
+  },
+
+  // —— Shoulders ——
+  'overhead-press': {
+    video: shouldersFile('Overhead Press.mp4'),
+    poster: shouldersFile('Overhead Press.jpg'),
+  },
+  'dumbbell-shoulder-press': {
+    video: shouldersFile('Dumbbell Shoulder Press.mp4'),
+    poster: shouldersFile('Dumbbell Shoulder Press.jpg'),
+  },
+  'machine-shoulder-press': {
+    video: shouldersFile('Machine Shoulder Press.mp4'),
+    poster: shouldersFile('Machine Shoulder Press.jpg'),
+  },
+  'landmine-press': {
+    video: shouldersFile('Landmine Press.mp4'),
+    poster: shouldersFile('Landmine Press.jpg'),
+  },
+  'lateral-raise': {
+    video: shouldersFile('Lateral Raise.mp4'),
+    poster: shouldersFile('Lateral Raise.jpg'),
+  },
   'cable-lateral-raise': {
-    video: legsFile('Cable Lateral Raise.mp4'),
-    poster: legsFile('Cable Lateral Raise.jpg'),
+    video: shouldersFile('Cable Lateral Raise.mp4'),
+    poster: shouldersFile('Cable Lateral Raise.jpg'),
+  },
+  'rear-delt-fly': {
+    video: shouldersFile('Rear Delt Fly.mp4'),
+    poster: shouldersFile('Rear Delt Fly.jpg'),
+  },
+  // Assets live under /videos/shoulder
+  'face-pull': {
+    video: shouldersFile('Face Pull.mp4'),
+    poster: shouldersFile('Face Pull.jpg'),
+  },
+  'band-pull-apart': {
+    video: shouldersFile('Band Pull-Apart.mp4'),
+    poster: shouldersFile('Band Pull-Apart.jpg'),
   },
 };
 
@@ -251,6 +302,8 @@ const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
   'cable fly': EXERCISE_DEMO_BY_SLUG['cable-fly'],
   'dumbbell fly': EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
   'machine chest press': EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
+  'push-up': EXERCISE_DEMO_BY_SLUG['push-up'],
+  'push up': EXERCISE_DEMO_BY_SLUG['push-up'],
   'incline dumbbell press': EXERCISE_DEMO_BY_SLUG['incline-dumbbell-press'],
   'conventional deadlift': EXERCISE_DEMO_BY_SLUG['conventional-deadlift'],
   'barbell bent-over row': EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
@@ -269,6 +322,7 @@ const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
   'front squat': EXERCISE_DEMO_BY_SLUG['front-squat'],
   'goblet squat': EXERCISE_DEMO_BY_SLUG['goblet-squat'],
   'hack squat': EXERCISE_DEMO_BY_SLUG['hack-squat'],
+  'leg press': EXERCISE_DEMO_BY_SLUG['leg-press'],
   'bulgarian split squat': EXERCISE_DEMO_BY_SLUG['bulgarian-split-squat'],
   'leg curl': EXERCISE_DEMO_BY_SLUG['leg-curl'],
   'leg extension': EXERCISE_DEMO_BY_SLUG['leg-extension'],
@@ -277,7 +331,18 @@ const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
   'dumbbell rdl': EXERCISE_DEMO_BY_SLUG['dumbbell-rdl'],
   'good morning': EXERCISE_DEMO_BY_SLUG['good-morning'],
   'kettlebell swing': EXERCISE_DEMO_BY_SLUG['kettlebell-swing'],
+  'dumbbell walking lunge': EXERCISE_DEMO_BY_SLUG['dumbbell-walking-lunge'],
+  'walking lunge': EXERCISE_DEMO_BY_SLUG['dumbbell-walking-lunge'],
+  'overhead press': EXERCISE_DEMO_BY_SLUG['overhead-press'],
+  'dumbbell shoulder press': EXERCISE_DEMO_BY_SLUG['dumbbell-shoulder-press'],
+  'machine shoulder press': EXERCISE_DEMO_BY_SLUG['machine-shoulder-press'],
+  'landmine press': EXERCISE_DEMO_BY_SLUG['landmine-press'],
+  'lateral raise': EXERCISE_DEMO_BY_SLUG['lateral-raise'],
   'cable lateral raise': EXERCISE_DEMO_BY_SLUG['cable-lateral-raise'],
+  'rear delt fly': EXERCISE_DEMO_BY_SLUG['rear-delt-fly'],
+  'face pull': EXERCISE_DEMO_BY_SLUG['face-pull'],
+  'band pull-apart': EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
+  'band pull apart': EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
 };
 
 function normalizeKey(value: string): string {

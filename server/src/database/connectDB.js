@@ -12,7 +12,7 @@ async function connectDB() {
 
   try {
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000, // 10 s to find a server
+      serverSelectionTimeoutMS: 60000, // Atlas can be slow / flaky on first select
       socketTimeoutMS: 45000,
       family: 4, // force IPv4 — avoids IPv6 SRV issues
     });

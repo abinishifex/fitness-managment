@@ -7,6 +7,9 @@
  *
  * Options:
  *   --fresh  delete all exercises first (destructive)
+ *
+ * Without --fresh, upserts the seed and prunes any exercises whose slug
+ * is no longer in the catalogue.
  */
 require('../src/config/loadDotenv');
 
@@ -65,6 +68,15 @@ async function seedExercises({ fresh = false } = {}) {
       { $set: { approvedSubstitutions: subIds } }
     );
     linked += 1;
+  }
+
+  // Drop catalogue rows that are no longer in the seed (upsert alone leaves orphans).
+  if (!fresh) {
+    const keepSlugs = [...bySlug.keys()];
+    const pruned = await Exercise.deleteMany({ slug: { $nin: keepSlugs } });
+    if (pruned.deletedCount) {
+      console.log(`🧹 Pruned ${pruned.deletedCount} exercises not in seed`);
+    }
   }
 
   const total = await Exercise.countDocuments();

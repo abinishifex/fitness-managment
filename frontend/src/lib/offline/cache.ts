@@ -2,7 +2,8 @@ export const CACHE_KEYS = {
   profile: 'forge_cache:profile',
   today: 'forge_cache:today',
   plan: 'forge_cache:plan',
-  exercises: 'forge_cache:exercises',
+  // Bump when catalogue rows are removed so stale localStorage lists are dropped.
+  exercises: 'forge_cache:exercises:v2',
   plans: 'forge_cache:plans',
   selectedPlanId: 'forge_cache:selectedPlanId',
 } as const;
