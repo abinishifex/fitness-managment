@@ -6,99 +6,95 @@ type Props = {
   sets: SetLog[];
   targetReps: string;
   activeIndex: number;
-  onChange: (index: number, patch: Partial<SetLog>) => void;
+  exerciseDone: boolean;
   onComplete: (index: number) => void;
+  onRepeat: () => void;
+  onNextExercise?: () => void;
+  hasNextExercise?: boolean;
 };
 
-export function SetTracker({ sets, targetReps, activeIndex, onChange, onComplete }: Props) {
+export function SetTracker({
+  sets,
+  targetReps,
+  activeIndex,
+  exerciseDone,
+  onComplete,
+  onRepeat,
+  onNextExercise,
+  hasNextExercise,
+}: Props) {
+  const done = sets.filter((s) => s.completed).length;
+  const current = exerciseDone ? sets.length : Math.min(activeIndex + 1, sets.length);
+
   return (
-    <div className="space-y-3">
-      {sets.map((set, i) => {
-        const isActive = i === activeIndex && !set.completed;
-        const isLocked = i > activeIndex && !set.completed;
-        return (
-          <div
+    <div className="border border-surface-highlight bg-surface-raised/80 p-5 md:p-6 flex flex-col gap-5 h-full">
+      <div>
+        <p className="text-label-telemetry text-signal-volt uppercase tracking-[0.2em] text-[10px]">
+          Set counter
+        </p>
+        <p
+          key={`${done}-${current}`}
+          className="font-headline-xl text-steel-bright text-6xl md:text-7xl leading-none mt-2 tabular-nums animate-soft-pulse"
+        >
+          {String(current).padStart(2, '0')}
+          <span className="text-3xl text-steel-muted">/{String(sets.length).padStart(2, '0')}</span>
+        </p>
+        <p className="mt-2 text-sm text-steel-muted">
+          Target {targetReps} reps · tap complete after each set
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2" aria-label={`${done} of ${sets.length} sets complete`}>
+        {sets.map((set, i) => (
+          <button
             key={i}
-            className={`border p-4 transition-all duration-300 ${
+            type="button"
+            disabled={set.completed || i !== activeIndex}
+            onClick={() => onComplete(i)}
+            className={`h-10 flex-1 flex items-center justify-center text-sm font-bold border transition-all ${
               set.completed
-                ? 'border-signal-volt/50 bg-signal-volt/5 animate-set-complete'
-                : isActive
-                  ? 'border-signal-volt bg-surface-raised shadow-[0_0_24px_rgba(212,255,0,0.15)]'
-                  : 'border-surface-highlight bg-surface-raised/60 opacity-70'
+                ? 'bg-signal-volt text-surface-base border-signal-volt'
+                : i === activeIndex
+                  ? 'border-signal-volt text-signal-volt bg-signal-volt/10 animate-soft-pulse'
+                  : 'border-surface-highlight text-steel-muted opacity-50'
             }`}
+            aria-label={set.completed ? `Set ${i + 1} done` : `Complete set ${i + 1}`}
           >
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`w-9 h-9 flex items-center justify-center font-headline-md text-sm ${
-                    set.completed
-                      ? 'bg-signal-volt text-surface-base'
-                      : isActive
-                        ? 'bg-surface-highlight text-signal-volt animate-soft-pulse'
-                        : 'bg-surface-highlight text-steel-muted'
-                  }`}
-                >
-                  {set.completed ? (
-                    <span className="material-symbols-outlined text-lg">check</span>
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-                <div>
-                  <p className="font-label-telemetry uppercase text-xs tracking-wider text-steel-bright">
-                    Set {String(i + 1).padStart(2, '0')}
-                  </p>
-                  <p className="text-[11px] text-steel-muted">Target {targetReps} reps</p>
-                </div>
-              </div>
-              {set.completed && (
-                <span className="text-label-telemetry text-signal-volt text-[10px] uppercase tracking-wider">
-                  Logged
-                </span>
-              )}
-            </div>
+            {set.completed ? (
+              <span className="material-symbols-outlined text-lg">check</span>
+            ) : (
+              i + 1
+            )}
+          </button>
+        ))}
+      </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="field !m-0">
-                <span className="text-[11px] text-steel-muted uppercase tracking-wider">kg</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  disabled={set.completed || isLocked}
-                  value={set.weightKg}
-                  onChange={(e) => onChange(i, { weightKg: e.target.value })}
-                  placeholder="0"
-                  className="mt-1"
-                />
-              </label>
-              <label className="field !m-0">
-                <span className="text-[11px] text-steel-muted uppercase tracking-wider">reps</span>
-                <input
-                  type="number"
-                  min="0"
-                  disabled={set.completed || isLocked}
-                  value={set.reps}
-                  onChange={(e) => onChange(i, { reps: e.target.value })}
-                  placeholder={targetReps.split('-')[0] || '8'}
-                  className="mt-1"
-                />
-              </label>
+      <div className="mt-auto space-y-3">
+        {!exerciseDone ? (
+          <button
+            type="button"
+            className="btn w-full custom-glow text-base py-4"
+            onClick={() => onComplete(activeIndex)}
+          >
+            Complete set {activeIndex + 1}
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <div className="notice animate-set-complete !mb-0">
+              All sets logged for this move.
             </div>
-
-            {isActive && (
-              <button
-                type="button"
-                className="btn w-full mt-4 custom-glow"
-                disabled={!set.reps}
-                onClick={() => onComplete(i)}
-              >
-                Complete set
+            {hasNextExercise && onNextExercise && (
+              <button type="button" className="btn w-full custom-glow text-base py-4" onClick={onNextExercise}>
+                Next exercise
               </button>
             )}
           </div>
-        );
-      })}
+        )}
+
+        <button type="button" className="btn secondary w-full" onClick={onRepeat}>
+          Repeat exercise
+        </button>
+      </div>
     </div>
   );
 }

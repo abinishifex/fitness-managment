@@ -6,10 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import type { Exercise } from '@/lib/types';
 import {
   EXERCISE_TYPES,
-  getExerciseImage,
+  getExerciseMedia,
   resolveExerciseType,
   type ExerciseTypeKey,
 } from '@/lib/exerciseMedia';
+import { ExerciseDetailModal } from '@/components/workout/ExerciseDetailModal';
 import { ExerciseTypeGrid } from '@/components/workout/ExerciseTypeGrid';
 import { offlineApi, peekExercises } from '@/lib/offline';
 
@@ -20,6 +21,7 @@ function ExercisesContent() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Exercise | null>(null);
 
   useEffect(() => {
     const cached = peekExercises();
@@ -98,24 +100,32 @@ function ExercisesContent() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((ex, i) => {
-            const img = getExerciseImage(ex.primaryMuscles);
+            const media = getExerciseMedia(ex.primaryMuscles, ex);
             return (
-              <article
+              <button
                 key={ex._id}
-                className="group relative overflow-hidden border border-surface-highlight min-h-[220px] animate-fade-up"
+                type="button"
+                onClick={() => setSelected(ex)}
+                className="group relative overflow-hidden border border-surface-highlight min-h-[220px] animate-fade-up text-left w-full hover:border-signal-volt/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-volt"
                 style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={img}
-                  alt={ex.name}
+                  src={media.poster || media.image}
+                  alt=""
                   className="absolute inset-0 w-full h-full object-cover brightness-[0.62] contrast-125 transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-surface-base via-surface-base/50 to-transparent" />
+                {media.video && (
+                  <span className="absolute top-3 right-3 z-10 inline-flex items-center justify-center w-9 h-9 border border-signal-volt/40 bg-surface-overlay/85 text-signal-volt">
+                    <span className="material-symbols-outlined text-xl">play_arrow</span>
+                  </span>
+                )}
                 <div className="relative z-10 h-full flex flex-col justify-end p-5">
                   <div className="flex flex-wrap gap-2 mb-2">
                     <span className="tag">{ex.type}</span>
                     <span className="tag">{ex.difficulty}</span>
+                    {media.video && <span className="tag">Video demo</span>}
                   </div>
                   <h3 className="font-headline-md text-steel-bright uppercase text-xl leading-tight">
                     {ex.name}
@@ -125,13 +135,15 @@ function ExercisesContent() {
                   </p>
                   <p className="text-sm text-steel-muted mt-2 line-clamp-2">{ex.instructions}</p>
                 </div>
-              </article>
+              </button>
             );
           })}
         </div>
       )}
 
       {!loading && !filtered.length && <div className="notice">No exercises match this filter.</div>}
+
+      <ExerciseDetailModal exercise={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

@@ -224,15 +224,10 @@ export default function Workout() {
   return (
     <>
       {error && <div className="notice error mb-4">{error}</div>}
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Active session // {workout.date}</div>
-          <h1 className="page-title">{workout.dayOfWeek}</h1>
-          <p className="muted">
-            {workout.planName ? `${workout.planName} · ` : ''}
-            Track every set with animated rest timers. Progress saves on this device.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <p className="text-label-telemetry text-steel-muted uppercase tracking-wider text-[10px]">
+          {workout.date}
+        </p>
         <div className="flex flex-wrap items-end gap-3">
           {planSwitcher}
           <Link href="/app" className="btn secondary">

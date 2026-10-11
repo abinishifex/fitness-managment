@@ -101,4 +101,89 @@ export function getExerciseImage(muscles: string[] = []): string {
   return resolveExerciseType(muscles).image;
 }
 
+export type ExerciseMedia = {
+  image: string;
+  video?: string;
+  poster?: string;
+  hasDemo: boolean;
+};
+
+type DemoAsset = { video?: string; poster?: string };
+
+const CHEST_DIR = '/videos/chest';
+
+function chestFile(filename: string): string {
+  return `${CHEST_DIR}/${encodeURIComponent(filename)}`;
+}
+
+/** Demo clips / stills keyed by catalogue slug (and common name aliases). */
+const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
+  'barbell-bench-press': {
+    video: chestFile('Barbell Bench Press.mp4'),
+    poster: chestFile('Barbell Bench Press.jpg'),
+  },
+  'dumbbell-bench-press': {
+    video: chestFile('Dumbbell Bench Press.mp4'),
+    poster: chestFile('Dumbbell Bench Press.jpg'),
+  },
+  'cable-fly': {
+    video: chestFile('Cable Fly.mp4'),
+    poster: chestFile('Cable Fly.jpg'),
+  },
+  'dumbbell-fly': {
+    video: chestFile('Dumbbell Fly.mp4'),
+    poster: chestFile('Dumbbell Fly.jpg'),
+  },
+  'machine-chest-press': {
+    video: chestFile('Machine Chest Press.mp4'),
+    poster: chestFile('Machine Chest Press.jpg'),
+  },
+  'incline-dumbbell-press': { poster: chestFile('Incline Dumbbell Press.jpg') },
+};
+
+const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
+  'barbell bench press': EXERCISE_DEMO_BY_SLUG['barbell-bench-press'],
+  'dumbbell bench press': EXERCISE_DEMO_BY_SLUG['dumbbell-bench-press'],
+  'cable fly': EXERCISE_DEMO_BY_SLUG['cable-fly'],
+  'dumbbell fly': EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
+  'machine chest press': EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
+  'incline dumbbell press': EXERCISE_DEMO_BY_SLUG['incline-dumbbell-press'],
+};
+
+function normalizeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[_]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+export function getExerciseDemo(exercise?: {
+  slug?: string;
+  name?: string;
+} | null): DemoAsset | null {
+  if (!exercise) return null;
+  if (exercise.slug && EXERCISE_DEMO_BY_SLUG[exercise.slug]) {
+    return EXERCISE_DEMO_BY_SLUG[exercise.slug];
+  }
+  if (exercise.name) {
+    const byName = EXERCISE_DEMO_BY_NAME[normalizeKey(exercise.name)];
+    if (byName) return byName;
+  }
+  return null;
+}
+
+export function getExerciseMedia(
+  muscles: string[] = [],
+  exercise?: { slug?: string; name?: string } | null
+): ExerciseMedia {
+  const fallback = getExerciseImage(muscles);
+  const demo = getExerciseDemo(exercise);
+  if (!demo) {
+    return { image: fallback, hasDemo: false };
+  }
+  return {
+    image: demo.poster || fallback,
+    video: demo.video,
+    poster: demo.poster || fallback,
+    hasDemo: Boolean(demo.video || demo.poster),
+  };
+}
+
 export const WORKOUT_HERO = '/exercises/workout-hero.jpg';
