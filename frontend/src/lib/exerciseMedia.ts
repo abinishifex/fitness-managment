@@ -111,13 +111,24 @@ export type ExerciseMedia = {
 type DemoAsset = { video?: string; poster?: string };
 
 const CHEST_DIR = '/videos/chest';
+const ARM_DIR = '/videos/arm';
+const CORE_DIR = '/videos/core';
 
 function chestFile(filename: string): string {
   return `${CHEST_DIR}/${encodeURIComponent(filename)}`;
 }
 
+function armFile(filename: string): string {
+  return `${ARM_DIR}/${encodeURIComponent(filename)}`;
+}
+
+function coreFile(filename: string): string {
+  return `${CORE_DIR}/${encodeURIComponent(filename)}`;
+}
+
 /** Demo clips / stills keyed by catalogue slug (and common name aliases). */
 const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
+  // — Chest —
   'barbell-bench-press': {
     video: chestFile('Barbell Bench Press.mp4'),
     poster: chestFile('Barbell Bench Press.jpg'),
@@ -139,15 +150,42 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
     poster: chestFile('Machine Chest Press.jpg'),
   },
   'incline-dumbbell-press': { poster: chestFile('Incline Dumbbell Press.jpg') },
+
+  // — Arms —
+  'barbell-curl': { video: armFile('Barbell Curl.mp4') },
+  'dumbbell-curl': { video: armFile('Dumbbell Curl.mp4') },
+  'cable-curl': { video: armFile('Cable Curl.mp4') },
+  'triceps-pushdown': { video: armFile('Triceps Pushdown.mp4') },
+  'overhead-triceps-extension': { video: armFile('Overhead Triceps Extension.mp4') },
+  'bench-dip': { video: armFile('Bench Dip.mp4') },
+
+  // — Core —
+  plank: { video: coreFile('plank.mp4') },
+  'hanging-knee-raise': { video: coreFile('Hanging Knee Raise.mp4') },
+  'farmer-carry': { video: coreFile('Farmer Carry.mp4') },
 };
 
 const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
+  // — Chest —
   'barbell bench press': EXERCISE_DEMO_BY_SLUG['barbell-bench-press'],
   'dumbbell bench press': EXERCISE_DEMO_BY_SLUG['dumbbell-bench-press'],
   'cable fly': EXERCISE_DEMO_BY_SLUG['cable-fly'],
   'dumbbell fly': EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
   'machine chest press': EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
   'incline dumbbell press': EXERCISE_DEMO_BY_SLUG['incline-dumbbell-press'],
+
+  // — Arms —
+  'barbell curl': EXERCISE_DEMO_BY_SLUG['barbell-curl'],
+  'dumbbell curl': EXERCISE_DEMO_BY_SLUG['dumbbell-curl'],
+  'cable curl': EXERCISE_DEMO_BY_SLUG['cable-curl'],
+  'triceps pushdown': EXERCISE_DEMO_BY_SLUG['triceps-pushdown'],
+  'overhead triceps extension': EXERCISE_DEMO_BY_SLUG['overhead-triceps-extension'],
+  'bench dip': EXERCISE_DEMO_BY_SLUG['bench-dip'],
+
+  // — Core —
+  plank: EXERCISE_DEMO_BY_SLUG['plank'],
+  'hanging knee raise': EXERCISE_DEMO_BY_SLUG['hanging-knee-raise'],
+  'farmer carry': EXERCISE_DEMO_BY_SLUG['farmer-carry'],
 };
 
 function normalizeKey(value: string): string {
