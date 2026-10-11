@@ -117,16 +117,29 @@ function ExercisesContent() {
                 className="group relative overflow-hidden border border-surface-highlight min-h-[220px] animate-fade-up text-left w-full hover:border-signal-volt/50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-volt"
                 style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={media.poster || media.image}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover brightness-[0.62] contrast-125 transition-transform duration-500 group-hover:scale-105"
-                />
+                {media.video ? (
+                  <video
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.62] contrast-125"
+                    src={media.video}
+                    poster={media.poster || media.image}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={media.poster || media.image}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover brightness-[0.62] contrast-125 transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-surface-base via-surface-base/50 to-transparent" />
                 {media.video && (
-                  <span className="absolute top-3 right-3 z-10 inline-flex items-center justify-center w-9 h-9 border border-signal-volt/40 bg-surface-overlay/85 text-signal-volt">
-                    <span className="material-symbols-outlined text-xl">play_arrow</span>
+                  <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 bg-surface-overlay/90 border border-signal-volt/40 px-2.5 py-1 text-signal-volt">
+                    <span className="w-1.5 h-1.5 rounded-full bg-signal-volt animate-ping" />
+                    <span className="text-[10px] uppercase tracking-widest font-label-telemetry">Demo</span>
                   </span>
                 )}
                 <div className="relative z-10 h-full flex flex-col justify-end p-5">
