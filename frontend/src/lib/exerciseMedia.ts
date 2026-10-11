@@ -110,239 +110,155 @@ export type ExerciseMedia = {
 
 type DemoAsset = { video?: string; poster?: string };
 
-const CHEST_DIR = '/videos/chest';
-const BACK_DIR = '/videos/back';
-const LEGS_DIR = '/videos/legs';
-const SHOULDERS_DIR = '/videos/shoulder';
+// ─── Video directory roots ────────────────────────────────────────────────────
+const CHEST_DIR     = '/videos/chest';
+const BACK_DIR      = '/videos/back';
+const LEGS_DIR      = '/videos/legs';
+const SHOULDERS_DIR = '/videos/shoulder'; // folder name is singular
+const ARM_DIR       = '/videos/arm';
+const CORE_DIR      = '/videos/core';
 
-function mediaFile(dir: string, filename: string): string {
+/** Encode a filename so spaces → %20, hyphens are safe. */
+function f(dir: string, filename: string): string {
   return `${dir}/${encodeURIComponent(filename)}`;
 }
 
-function chestFile(filename: string): string {
-  return mediaFile(CHEST_DIR, filename);
-}
-
-function backFile(filename: string): string {
-  return mediaFile(BACK_DIR, filename);
-}
-
-function legsFile(filename: string): string {
-  return mediaFile(LEGS_DIR, filename);
-}
-
-function shouldersFile(filename: string): string {
-  return mediaFile(SHOULDERS_DIR, filename);
-}
-
-/** Demo clips / stills keyed by catalogue slug (and common name aliases). */
+// ─── Slug → asset map (exact filenames from public/videos/*) ─────────────────
 const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
-  // —— Chest ——
-  'barbell-bench-press': {
-    video: chestFile('Barbell Bench Press.mp4'),
-    poster: chestFile('Barbell Bench Press.jpg'),
-  },
-  'dumbbell-bench-press': {
-    video: chestFile('Dumbbell Bench Press.mp4'),
-    poster: chestFile('Dumbbell Bench Press.jpg'),
-  },
-  'cable-fly': {
-    video: chestFile('Cable Fly.mp4'),
-    poster: chestFile('Cable Fly.jpg'),
-  },
-  'dumbbell-fly': {
-    video: chestFile('Dumbbell Fly.mp4'),
-    poster: chestFile('Dumbbell Fly.jpg'),
-  },
-  'machine-chest-press': {
-    video: chestFile('Machine Chest Press.mp4'),
-    poster: chestFile('Machine Chest Press.jpg'),
-  },
-  'push-up': {
-    video: chestFile('Push-Up.mp4'),
-    poster: chestFile('Push-Up.jpg'),
-  },
-  'incline-dumbbell-press': { poster: chestFile('Incline Dumbbell Press.jpg') },
 
-  // —— Back ——
-  'conventional-deadlift': {
-    video: backFile('Conventional Deadlift.mp4'),
-    poster: backFile('Conventional Deadlift.jpg'),
-  },
-  'barbell-bent-over-row': {
-    video: backFile('Barbell Bent-Over Row.mp4'),
-    poster: backFile('Barbell Bent-Over Row.jpg'),
-  },
-  'chest-supported-dumbbell-row': {
-    video: backFile('Chest-Supported Dumbbell Row.mp4'),
-    poster: backFile('Chest-Supported Dumbbell Row.jpg'),
-  },
-  'seated-cable-row': {
-    video: backFile('Seated Cable Row.mp4'),
-    poster: backFile('Seated Cable Row.jpg'),
-  },
-  'lat-pulldown': {
-    video: backFile('Lat Pulldown.mp4'),
-    poster: backFile('Lat Pulldown.jpg'),
-  },
-  'pull-up': {
-    video: backFile('Pull-Up.mp4'),
-    poster: backFile('Pull-Up.jpg'),
-  },
-  'assisted-pull-up': {
-    video: backFile('Assisted Pull-Up.mp4'),
-    poster: backFile('Assisted Pull-Up.jpg'),
-  },
-  'single-arm-dumbbell-row': {
-    video: backFile('Single-Arm Dumbbell Row.mp4'),
-    poster: backFile('Single-Arm Dumbbell Row.jpg'),
-  },
+  // ── Chest (/videos/chest/) ────────────────────────────────────────────────
+  'barbell-bench-press':    { video: f(CHEST_DIR, 'Barbell Bench Press.mp4'),    poster: f(CHEST_DIR, 'Barbell Bench Press.jpg') },
+  'dumbbell-bench-press':   { video: f(CHEST_DIR, 'Dumbbell Bench Press.mp4'),   poster: f(CHEST_DIR, 'Dumbbell Bench Press.jpg') },
+  'incline-dumbbell-press': {                                                     poster: f(CHEST_DIR, 'Incline Dumbbell Press.jpg') },
+  'cable-fly':              { video: f(CHEST_DIR, 'Cable Fly.mp4'),              poster: f(CHEST_DIR, 'Cable Fly.jpg') },
+  'dumbbell-fly':           { video: f(CHEST_DIR, 'Dumbbell Fly.mp4'),           poster: f(CHEST_DIR, 'Dumbbell Fly.jpg') },
+  'machine-chest-press':    { video: f(CHEST_DIR, 'Machine Chest Press.mp4'),    poster: f(CHEST_DIR, 'Machine Chest Press.jpg') },
+  'push-up':                { video: f(CHEST_DIR, 'Push-Up.mp4'),                poster: f(CHEST_DIR, 'Push-Up.jpg') },
 
-  // —— Legs ——
-  'back-squat': {
-    video: legsFile('Back Squat.mp4'),
-    poster: legsFile('Back Squat.jpg'),
-  },
-  'front-squat': {
-    video: legsFile('Front Squat.mp4'),
-    poster: legsFile('Front Squat.jpg'),
-  },
-  'goblet-squat': {
-    video: legsFile('Goblet Squat.mp4'),
-    poster: legsFile('Goblet Squat.jpg'),
-  },
-  'hack-squat': {
-    video: legsFile('Hack Squat.mp4'),
-    poster: legsFile('Hack Squat.jpg'),
-  },
-  'leg-press': {
-    video: legsFile('Leg Press.mp4'),
-    poster: legsFile('Leg Press.jpg'),
-  },
-  'bulgarian-split-squat': {
-    video: legsFile('Bulgarian Split Squat.mp4'),
-    poster: legsFile('Bulgarian Split Squat.jpg'),
-  },
-  'leg-curl': {
-    video: legsFile('Leg Curl.mp4'),
-    poster: legsFile('Leg Curl.jpg'),
-  },
-  'leg-extension': {
-    video: legsFile('Leg Extension.mp4'),
-    poster: legsFile('Leg Extension.jpg'),
-  },
-  'hip-thrust': {
-    video: legsFile('Hip Thrust.mp4'),
-    poster: legsFile('Hip Thrust.jpg'),
-  },
-  'glute-bridge': {
-    video: legsFile('Glute Bridge.mp4'),
-    poster: legsFile('Glute Bridge.jpg'),
-  },
-  'dumbbell-rdl': {
-    video: legsFile('Dumbbell RDL.mp4'),
-    poster: legsFile('Dumbbell RDL.jpg'),
-  },
-  'good-morning': {
-    video: legsFile('Good Morning.mp4'),
-    poster: legsFile('Good Morning.jpg'),
-  },
-  'kettlebell-swing': {
-    video: legsFile('Kettlebell Swing.mp4'),
-    poster: legsFile('Kettlebell Swing.jpg'),
-  },
-  'dumbbell-walking-lunge': {
-    video: legsFile('Dumbbell Walking Lunge.mp4'),
-    poster: legsFile('Dumbbell Walking Lunge.jpg'),
-  },
+  // ── Back (/videos/back/) ──────────────────────────────────────────────────
+  'conventional-deadlift':        { video: f(BACK_DIR, 'Conventional Deadlift.mp4'),        poster: f(BACK_DIR, 'Conventional Deadlift.jpg') },
+  'barbell-bent-over-row':        { video: f(BACK_DIR, 'Barbell Bent-Over Row.mp4'),        poster: f(BACK_DIR, 'Barbell Bent-Over Row.jpg') },
+  'chest-supported-dumbbell-row': { video: f(BACK_DIR, 'Chest-Supported Dumbbell Row.mp4'), poster: f(BACK_DIR, 'Chest-Supported Dumbbell Row.jpg') },
+  'seated-cable-row':             { video: f(BACK_DIR, 'Seated Cable Row.mp4'),             poster: f(BACK_DIR, 'Seated Cable Row.jpg') },
+  'lat-pulldown':                 { video: f(BACK_DIR, 'Lat Pulldown.mp4'),                 poster: f(BACK_DIR, 'Lat Pulldown.jpg') },
+  'pull-up':                      { video: f(BACK_DIR, 'Pull-Up.mp4'),                      poster: f(BACK_DIR, 'Pull-Up.jpg') },
+  'assisted-pull-up':             { video: f(BACK_DIR, 'Assisted Pull-Up.mp4'),             poster: f(BACK_DIR, 'Assisted Pull-Up.jpg') },
+  'single-arm-dumbbell-row':      { video: f(BACK_DIR, 'Single-Arm Dumbbell Row.mp4'),      poster: f(BACK_DIR, 'Single-Arm Dumbbell Row.jpg') },
+  // No video file: romanian-deadlift, trap-bar-deadlift, face-pull*, band-pull-apart*
+  // *face-pull and band-pull-apart are in /videos/shoulder — mapped there below
 
-  // —— Shoulders ——
-  'overhead-press': {
-    video: shouldersFile('Overhead Press.mp4'),
-    poster: shouldersFile('Overhead Press.jpg'),
-  },
-  'dumbbell-shoulder-press': {
-    video: shouldersFile('Dumbbell Shoulder Press.mp4'),
-    poster: shouldersFile('Dumbbell Shoulder Press.jpg'),
-  },
-  'machine-shoulder-press': {
-    video: shouldersFile('Machine Shoulder Press.mp4'),
-    poster: shouldersFile('Machine Shoulder Press.jpg'),
-  },
-  'landmine-press': {
-    video: shouldersFile('Landmine Press.mp4'),
-    poster: shouldersFile('Landmine Press.jpg'),
-  },
-  'lateral-raise': {
-    video: shouldersFile('Lateral Raise.mp4'),
-    poster: shouldersFile('Lateral Raise.jpg'),
-  },
-  'cable-lateral-raise': {
-    video: shouldersFile('Cable Lateral Raise.mp4'),
-    poster: shouldersFile('Cable Lateral Raise.jpg'),
-  },
-  'rear-delt-fly': {
-    video: shouldersFile('Rear Delt Fly.mp4'),
-    poster: shouldersFile('Rear Delt Fly.jpg'),
-  },
-  // Assets live under /videos/shoulder
-  'face-pull': {
-    video: shouldersFile('Face Pull.mp4'),
-    poster: shouldersFile('Face Pull.jpg'),
-  },
-  'band-pull-apart': {
-    video: shouldersFile('Band Pull-Apart.mp4'),
-    poster: shouldersFile('Band Pull-Apart.jpg'),
-  },
+  // ── Legs (/videos/legs/) ──────────────────────────────────────────────────
+  'back-squat':            { video: f(LEGS_DIR, 'Back Squat.mp4'),            poster: f(LEGS_DIR, 'Back Squat.jpg') },
+  'front-squat':           { video: f(LEGS_DIR, 'Front Squat.mp4'),           poster: f(LEGS_DIR, 'Front Squat.jpg') },
+  'goblet-squat':          { video: f(LEGS_DIR, 'Goblet Squat.mp4'),          poster: f(LEGS_DIR, 'Goblet Squat.jpg') },
+  'leg-press':             { video: f(LEGS_DIR, 'Leg Press.mp4'),             poster: f(LEGS_DIR, 'Leg Press.jpg') },
+  'hack-squat':            { video: f(LEGS_DIR, 'Hack Squat.mp4'),            poster: f(LEGS_DIR, 'Hack Squat.jpg') },
+  'bulgarian-split-squat': { video: f(LEGS_DIR, 'Bulgarian Split Squat.mp4'), poster: f(LEGS_DIR, 'Bulgarian Split Squat.jpg') },
+  'walking-lunge':         { video: f(LEGS_DIR, 'Dumbbell Walking Lunge.mp4'),poster: f(LEGS_DIR, 'Dumbbell Walking Lunge.jpg') },
+  'dumbbell-walking-lunge':{ video: f(LEGS_DIR, 'Dumbbell Walking Lunge.mp4'),poster: f(LEGS_DIR, 'Dumbbell Walking Lunge.jpg') },
+  'leg-curl':              { video: f(LEGS_DIR, 'Leg Curl.mp4'),              poster: f(LEGS_DIR, 'Leg Curl.jpg') },
+  'leg-extension':         { video: f(LEGS_DIR, 'Leg Extension.mp4'),         poster: f(LEGS_DIR, 'Leg Extension.jpg') },
+  'hip-thrust':            { video: f(LEGS_DIR, 'Hip Thrust.mp4'),            poster: f(LEGS_DIR, 'Hip Thrust.jpg') },
+  'glute-bridge':          { video: f(LEGS_DIR, 'Glute Bridge.mp4'),          poster: f(LEGS_DIR, 'Glute Bridge.jpg') },
+  'dumbbell-rdl':          { video: f(LEGS_DIR, 'Dumbbell RDL.mp4'),          poster: f(LEGS_DIR, 'Dumbbell RDL.jpg') },
+  'good-morning':          { video: f(LEGS_DIR, 'Good Morning.mp4'),          poster: f(LEGS_DIR, 'Good Morning.jpg') },
+  'kettlebell-swing':      { video: f(LEGS_DIR, 'Kettlebell Swing.mp4'),      poster: f(LEGS_DIR, 'Kettlebell Swing.jpg') },
+  // No video file: standing-calf-raise, seated-calf-raise, romanian-deadlift
+
+  // ── Shoulders (/videos/shoulder/) ────────────────────────────────────────
+  'overhead-press':          { video: f(SHOULDERS_DIR, 'Overhead Press.mp4'),          poster: f(SHOULDERS_DIR, 'Overhead Press.jpg') },
+  'dumbbell-shoulder-press': { video: f(SHOULDERS_DIR, 'Dumbbell Shoulder Press.mp4'), poster: f(SHOULDERS_DIR, 'Dumbbell Shoulder Press.jpg') },
+  'machine-shoulder-press':  { video: f(SHOULDERS_DIR, 'Machine Shoulder Press.mp4'),  poster: f(SHOULDERS_DIR, 'Machine Shoulder Press.jpg') },
+  'landmine-press':          { video: f(SHOULDERS_DIR, 'Landmine Press.mp4'),          poster: f(SHOULDERS_DIR, 'Landmine Press.jpg') },
+  'lateral-raise':           { video: f(SHOULDERS_DIR, 'Lateral Raise.mp4'),           poster: f(SHOULDERS_DIR, 'Lateral Raise.jpg') },
+  'cable-lateral-raise':     { video: f(SHOULDERS_DIR, 'Cable Lateral Raise.mp4'),     poster: f(SHOULDERS_DIR, 'Cable Lateral Raise.jpg') },
+  'rear-delt-fly':           { video: f(SHOULDERS_DIR, 'Rear Delt Fly.mp4'),           poster: f(SHOULDERS_DIR, 'Rear Delt Fly.jpg') },
+  'face-pull':               { video: f(SHOULDERS_DIR, 'Face Pull.mp4'),               poster: f(SHOULDERS_DIR, 'Face Pull.jpg') },
+  'band-pull-apart':         { video: f(SHOULDERS_DIR, 'Band Pull-Apart.mp4'),         poster: f(SHOULDERS_DIR, 'Band Pull-Apart.jpg') },
+
+  // ── Arms (/videos/arm/) ───────────────────────────────────────────────────
+  'barbell-curl':               { video: f(ARM_DIR, 'Barbell Curl.mp4') },
+  'dumbbell-curl':              { video: f(ARM_DIR, 'Dumbbell Curl.mp4') },
+  'cable-curl':                 { video: f(ARM_DIR, 'Cable Curl.mp4') },
+  'triceps-pushdown':           { video: f(ARM_DIR, 'Triceps Pushdown.mp4') },
+  'overhead-triceps-extension': { video: f(ARM_DIR, 'Overhead Triceps Extension.mp4') },
+  'bench-dip':                  { video: f(ARM_DIR, 'Bench Dip.mp4') },
+
+  // ── Core (/videos/core/) ──────────────────────────────────────────────────
+  'plank':              { video: f(CORE_DIR, 'plank.mp4') },            // lowercase on disk
+  'hanging-knee-raise': { video: f(CORE_DIR, 'Hanging Knee Raise.mp4') },
+  'farmer-carry':       { video: f(CORE_DIR, 'Farmer Carry.mp4') },
 };
 
+// ─── Name → asset map (normalised lowercase, covers hyphen/space variants) ───
 const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
-  'barbell bench press': EXERCISE_DEMO_BY_SLUG['barbell-bench-press'],
-  'dumbbell bench press': EXERCISE_DEMO_BY_SLUG['dumbbell-bench-press'],
-  'cable fly': EXERCISE_DEMO_BY_SLUG['cable-fly'],
-  'dumbbell fly': EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
-  'machine chest press': EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
-  'push-up': EXERCISE_DEMO_BY_SLUG['push-up'],
-  'push up': EXERCISE_DEMO_BY_SLUG['push-up'],
+  // Chest
+  'barbell bench press':    EXERCISE_DEMO_BY_SLUG['barbell-bench-press'],
+  'dumbbell bench press':   EXERCISE_DEMO_BY_SLUG['dumbbell-bench-press'],
   'incline dumbbell press': EXERCISE_DEMO_BY_SLUG['incline-dumbbell-press'],
-  'conventional deadlift': EXERCISE_DEMO_BY_SLUG['conventional-deadlift'],
-  'barbell bent-over row': EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
-  'barbell bent over row': EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
-  'chest-supported dumbbell row': EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
-  'chest supported dumbbell row': EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
-  'seated cable row': EXERCISE_DEMO_BY_SLUG['seated-cable-row'],
-  'lat pulldown': EXERCISE_DEMO_BY_SLUG['lat-pulldown'],
-  'pull-up': EXERCISE_DEMO_BY_SLUG['pull-up'],
-  'pull up': EXERCISE_DEMO_BY_SLUG['pull-up'],
-  'assisted pull-up': EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
-  'assisted pull up': EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
-  'single-arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
-  'single arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
-  'back squat': EXERCISE_DEMO_BY_SLUG['back-squat'],
-  'front squat': EXERCISE_DEMO_BY_SLUG['front-squat'],
-  'goblet squat': EXERCISE_DEMO_BY_SLUG['goblet-squat'],
-  'hack squat': EXERCISE_DEMO_BY_SLUG['hack-squat'],
-  'leg press': EXERCISE_DEMO_BY_SLUG['leg-press'],
-  'bulgarian split squat': EXERCISE_DEMO_BY_SLUG['bulgarian-split-squat'],
-  'leg curl': EXERCISE_DEMO_BY_SLUG['leg-curl'],
-  'leg extension': EXERCISE_DEMO_BY_SLUG['leg-extension'],
-  'hip thrust': EXERCISE_DEMO_BY_SLUG['hip-thrust'],
-  'glute bridge': EXERCISE_DEMO_BY_SLUG['glute-bridge'],
-  'dumbbell rdl': EXERCISE_DEMO_BY_SLUG['dumbbell-rdl'],
-  'good morning': EXERCISE_DEMO_BY_SLUG['good-morning'],
-  'kettlebell swing': EXERCISE_DEMO_BY_SLUG['kettlebell-swing'],
+  'cable fly':              EXERCISE_DEMO_BY_SLUG['cable-fly'],
+  'dumbbell fly':           EXERCISE_DEMO_BY_SLUG['dumbbell-fly'],
+  'machine chest press':    EXERCISE_DEMO_BY_SLUG['machine-chest-press'],
+  'push-up':                EXERCISE_DEMO_BY_SLUG['push-up'],
+  'push up':                EXERCISE_DEMO_BY_SLUG['push-up'],
+
+  // Back
+  'conventional deadlift':          EXERCISE_DEMO_BY_SLUG['conventional-deadlift'],
+  'barbell bent-over row':          EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
+  'barbell bent over row':          EXERCISE_DEMO_BY_SLUG['barbell-bent-over-row'],
+  'chest-supported dumbbell row':   EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
+  'chest supported dumbbell row':   EXERCISE_DEMO_BY_SLUG['chest-supported-dumbbell-row'],
+  'seated cable row':               EXERCISE_DEMO_BY_SLUG['seated-cable-row'],
+  'lat pulldown':                   EXERCISE_DEMO_BY_SLUG['lat-pulldown'],
+  'pull-up':                        EXERCISE_DEMO_BY_SLUG['pull-up'],
+  'pull up':                        EXERCISE_DEMO_BY_SLUG['pull-up'],
+  'assisted pull-up':               EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
+  'assisted pull up':               EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
+  'single-arm dumbbell row':        EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
+  'single arm dumbbell row':        EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
+
+  // Legs
+  'back squat':             EXERCISE_DEMO_BY_SLUG['back-squat'],
+  'front squat':            EXERCISE_DEMO_BY_SLUG['front-squat'],
+  'goblet squat':           EXERCISE_DEMO_BY_SLUG['goblet-squat'],
+  'leg press':              EXERCISE_DEMO_BY_SLUG['leg-press'],
+  'hack squat':             EXERCISE_DEMO_BY_SLUG['hack-squat'],
+  'bulgarian split squat':  EXERCISE_DEMO_BY_SLUG['bulgarian-split-squat'],
+  'walking lunge':          EXERCISE_DEMO_BY_SLUG['walking-lunge'],
   'dumbbell walking lunge': EXERCISE_DEMO_BY_SLUG['dumbbell-walking-lunge'],
-  'walking lunge': EXERCISE_DEMO_BY_SLUG['dumbbell-walking-lunge'],
-  'overhead press': EXERCISE_DEMO_BY_SLUG['overhead-press'],
+  'leg curl':               EXERCISE_DEMO_BY_SLUG['leg-curl'],
+  'leg extension':          EXERCISE_DEMO_BY_SLUG['leg-extension'],
+  'hip thrust':             EXERCISE_DEMO_BY_SLUG['hip-thrust'],
+  'glute bridge':           EXERCISE_DEMO_BY_SLUG['glute-bridge'],
+  'dumbbell rdl':           EXERCISE_DEMO_BY_SLUG['dumbbell-rdl'],
+  'romanian deadlift':      EXERCISE_DEMO_BY_SLUG['dumbbell-rdl'], // closest available
+  'good morning':           EXERCISE_DEMO_BY_SLUG['good-morning'],
+  'kettlebell swing':       EXERCISE_DEMO_BY_SLUG['kettlebell-swing'],
+
+  // Shoulders
+  'overhead press':          EXERCISE_DEMO_BY_SLUG['overhead-press'],
   'dumbbell shoulder press': EXERCISE_DEMO_BY_SLUG['dumbbell-shoulder-press'],
-  'machine shoulder press': EXERCISE_DEMO_BY_SLUG['machine-shoulder-press'],
-  'landmine press': EXERCISE_DEMO_BY_SLUG['landmine-press'],
-  'lateral raise': EXERCISE_DEMO_BY_SLUG['lateral-raise'],
-  'cable lateral raise': EXERCISE_DEMO_BY_SLUG['cable-lateral-raise'],
-  'rear delt fly': EXERCISE_DEMO_BY_SLUG['rear-delt-fly'],
-  'face pull': EXERCISE_DEMO_BY_SLUG['face-pull'],
-  'band pull-apart': EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
-  'band pull apart': EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
+  'machine shoulder press':  EXERCISE_DEMO_BY_SLUG['machine-shoulder-press'],
+  'landmine press':          EXERCISE_DEMO_BY_SLUG['landmine-press'],
+  'lateral raise':           EXERCISE_DEMO_BY_SLUG['lateral-raise'],
+  'cable lateral raise':     EXERCISE_DEMO_BY_SLUG['cable-lateral-raise'],
+  'rear delt fly':           EXERCISE_DEMO_BY_SLUG['rear-delt-fly'],
+  'face pull':               EXERCISE_DEMO_BY_SLUG['face-pull'],
+  'band pull-apart':         EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
+  'band pull apart':         EXERCISE_DEMO_BY_SLUG['band-pull-apart'],
+
+  // Arms
+  'barbell curl':               EXERCISE_DEMO_BY_SLUG['barbell-curl'],
+  'dumbbell curl':              EXERCISE_DEMO_BY_SLUG['dumbbell-curl'],
+  'cable curl':                 EXERCISE_DEMO_BY_SLUG['cable-curl'],
+  'triceps pushdown':           EXERCISE_DEMO_BY_SLUG['triceps-pushdown'],
+  'overhead triceps extension': EXERCISE_DEMO_BY_SLUG['overhead-triceps-extension'],
+  'bench dip':                  EXERCISE_DEMO_BY_SLUG['bench-dip'],
+
+  // Core
+  'plank':              EXERCISE_DEMO_BY_SLUG['plank'],
+  'hanging knee raise': EXERCISE_DEMO_BY_SLUG['hanging-knee-raise'],
+  'farmer carry':       EXERCISE_DEMO_BY_SLUG['farmer-carry'],
 };
 
 function normalizeKey(value: string): string {
