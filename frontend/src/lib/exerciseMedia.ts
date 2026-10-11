@@ -112,6 +112,7 @@ type DemoAsset = { video?: string; poster?: string };
 
 const CHEST_DIR = '/videos/chest';
 const BACK_DIR = '/videos/back';
+const LEGS_DIR = '/videos/legs';
 
 function mediaFile(dir: string, filename: string): string {
   return `${dir}/${encodeURIComponent(filename)}`;
@@ -123,6 +124,10 @@ function chestFile(filename: string): string {
 
 function backFile(filename: string): string {
   return mediaFile(BACK_DIR, filename);
+}
+
+function legsFile(filename: string): string {
+  return mediaFile(LEGS_DIR, filename);
 }
 
 /** Demo clips / stills keyed by catalogue slug (and common name aliases). */
@@ -183,6 +188,61 @@ const EXERCISE_DEMO_BY_SLUG: Record<string, DemoAsset> = {
     video: backFile('Single-Arm Dumbbell Row.mp4'),
     poster: backFile('Single-Arm Dumbbell Row.jpg'),
   },
+
+  // —— Legs ——
+  'back-squat': {
+    video: legsFile('Back Squat.mp4'),
+    poster: legsFile('Back Squat.jpg'),
+  },
+  'front-squat': {
+    video: legsFile('Front Squat.mp4'),
+    poster: legsFile('Front Squat.jpg'),
+  },
+  'goblet-squat': {
+    video: legsFile('Goblet Squat.mp4'),
+    poster: legsFile('Goblet Squat.jpg'),
+  },
+  'hack-squat': {
+    video: legsFile('Hack Squat.mp4'),
+    poster: legsFile('Hack Squat.jpg'),
+  },
+  'bulgarian-split-squat': {
+    video: legsFile('Bulgarian Split Squat.mp4'),
+    poster: legsFile('Bulgarian Split Squat.jpg'),
+  },
+  'leg-curl': {
+    video: legsFile('Leg Curl.mp4'),
+    poster: legsFile('Leg Curl.jpg'),
+  },
+  'leg-extension': {
+    video: legsFile('Leg Extension.mp4'),
+    poster: legsFile('Leg Extension.jpg'),
+  },
+  'hip-thrust': {
+    video: legsFile('Hip Thrust.mp4'),
+    poster: legsFile('Hip Thrust.jpg'),
+  },
+  'glute-bridge': {
+    video: legsFile('Glute Bridge.mp4'),
+    poster: legsFile('Glute Bridge.jpg'),
+  },
+  'dumbbell-rdl': {
+    video: legsFile('Dumbbell RDL.mp4'),
+    poster: legsFile('Dumbbell RDL.jpg'),
+  },
+  'good-morning': {
+    video: legsFile('Good Morning.mp4'),
+    poster: legsFile('Good Morning.jpg'),
+  },
+  'kettlebell-swing': {
+    video: legsFile('Kettlebell Swing.mp4'),
+    poster: legsFile('Kettlebell Swing.jpg'),
+  },
+  // Asset lives under /videos/legs for now
+  'cable-lateral-raise': {
+    video: legsFile('Cable Lateral Raise.mp4'),
+    poster: legsFile('Cable Lateral Raise.jpg'),
+  },
 };
 
 const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
@@ -205,6 +265,19 @@ const EXERCISE_DEMO_BY_NAME: Record<string, DemoAsset> = {
   'assisted pull up': EXERCISE_DEMO_BY_SLUG['assisted-pull-up'],
   'single-arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
   'single arm dumbbell row': EXERCISE_DEMO_BY_SLUG['single-arm-dumbbell-row'],
+  'back squat': EXERCISE_DEMO_BY_SLUG['back-squat'],
+  'front squat': EXERCISE_DEMO_BY_SLUG['front-squat'],
+  'goblet squat': EXERCISE_DEMO_BY_SLUG['goblet-squat'],
+  'hack squat': EXERCISE_DEMO_BY_SLUG['hack-squat'],
+  'bulgarian split squat': EXERCISE_DEMO_BY_SLUG['bulgarian-split-squat'],
+  'leg curl': EXERCISE_DEMO_BY_SLUG['leg-curl'],
+  'leg extension': EXERCISE_DEMO_BY_SLUG['leg-extension'],
+  'hip thrust': EXERCISE_DEMO_BY_SLUG['hip-thrust'],
+  'glute bridge': EXERCISE_DEMO_BY_SLUG['glute-bridge'],
+  'dumbbell rdl': EXERCISE_DEMO_BY_SLUG['dumbbell-rdl'],
+  'good morning': EXERCISE_DEMO_BY_SLUG['good-morning'],
+  'kettlebell swing': EXERCISE_DEMO_BY_SLUG['kettlebell-swing'],
+  'cable lateral raise': EXERCISE_DEMO_BY_SLUG['cable-lateral-raise'],
 };
 
 function normalizeKey(value: string): string {
