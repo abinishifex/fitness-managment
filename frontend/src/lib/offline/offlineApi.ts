@@ -80,8 +80,26 @@ export function peekPlan(planId?: string): ActivePlan | null {
   return getCached<ActivePlan>(CACHE_KEYS.plan);
 }
 
+/** Catalogue rows deleted from seed — strip from any leftover offline cache. */
+const REMOVED_EXERCISE_SLUGS = new Set([
+  'pec-deck',
+  'romanian-deadlift',
+  'trap-bar-deadlift',
+  'standing-calf-raise',
+  'seated-calf-raise',
+]);
+
+function sanitizeExercisesCache(data: CacheableExercises | null): CacheableExercises | null {
+  if (!data?.exercises?.length) return data;
+  const exercises = data.exercises.filter((ex) => !REMOVED_EXERCISE_SLUGS.has(ex.slug));
+  if (exercises.length === data.exercises.length) return data;
+  const next = { count: exercises.length, exercises };
+  setCached(CACHE_KEYS.exercises, next);
+  return next;
+}
+
 export function peekExercises(): CacheableExercises | null {
-  return getCached<CacheableExercises>(CACHE_KEYS.exercises);
+  return sanitizeExercisesCache(getCached<CacheableExercises>(CACHE_KEYS.exercises));
 }
 
 function isNetworkError(e: unknown) {
@@ -225,7 +243,23 @@ export const offlineApi = {
       const fresh = await api.listExercises(params);
       return { data: fresh, fromCache: false };
     }
-    return withCacheFirst(CACHE_KEYS.exercises, () => api.listExercises({ limit: '100' }));
+    // Network-first when online so catalogue seed removals show up on Types.
+    if (isOnline()) {
+      try {
+        const fresh = await api.listExercises({ limit: '100' });
+        setCached(CACHE_KEYS.exercises, fresh);
+        return { data: fresh, fromCache: false };
+      } catch (e) {
+        const cached = sanitizeExercisesCache(getCached<CacheableExercises>(CACHE_KEYS.exercises));
+        if (cached) return { data: cached, fromCache: true };
+        throw e;
+      }
+    }
+    const result = await withCacheFirst(CACHE_KEYS.exercises, () =>
+      api.listExercises({ limit: '100' }),
+    );
+    const cleaned = sanitizeExercisesCache(result.data) || result.data;
+    return { data: cleaned, fromCache: result.fromCache };
   },
 
   async saveProfile(token: string, profile: Profile) {
