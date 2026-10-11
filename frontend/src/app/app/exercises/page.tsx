@@ -24,6 +24,7 @@ function ExercisesContent() {
   const [selected, setSelected] = useState<Exercise | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const cached = peekExercises();
     if (cached?.exercises?.length) {
       setExercises(cached.exercises);
@@ -31,11 +32,18 @@ function ExercisesContent() {
     }
     offlineApi
       .listExercises({ limit: '100' })
-      .then((result) => setExercises(result.data.exercises))
-      .catch((e) => {
-        if (!peekExercises()?.exercises?.length) setError(e.message);
+      .then((result) => {
+        if (!cancelled) setExercises(result.data.exercises);
       })
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        if (!cancelled && !peekExercises()?.exercises?.length) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const activeType = EXERCISE_TYPES.find((t) => t.key === typeParam);
