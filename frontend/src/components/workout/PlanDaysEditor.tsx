@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ActivePlanDay, Exercise, PlanDayPatch, WorkoutExercise } from '@/lib/types';
 import {
   EXERCISE_TYPES,
+  matchesExerciseType,
   resolveExerciseType,
   type ExerciseTypeKey,
 } from '@/lib/exerciseMedia';
@@ -238,7 +239,7 @@ export function PlanDaysEditor({
     const q = pickerQuery.trim().toLowerCase();
     return catalog.filter((ex) => {
       const matchesType = pickerType
-        ? resolveExerciseType(ex.primaryMuscles).key === pickerType
+        ? matchesExerciseType(ex, pickerType)
         : true;
       const matchesQuery =
         !q ||
