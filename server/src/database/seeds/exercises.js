@@ -17,6 +17,9 @@ async function seedExercises() {
     );
   }
 
+  // Drop retired catalogue entries that upserts cannot remove.
+  await Exercise.deleteMany({ slug: { $in: ['dead-bug'] } });
+
   console.log("✅ Exercises seeded!");
 }
 function slugify(name) {
@@ -608,20 +611,7 @@ const EXERCISE_SEED = [
     instructions: 'Hold a straight-body plank on forearms or hands without sagging hips.',
     formCues: ['squeeze glutes', 'ribs toward pelvis'],
     contraindications: [],
-    substitutionSlugs: ['dead-bug'],
-  },
-  {
-    name: 'Dead Bug',
-    primaryMuscles: ['core'],
-    secondaryMuscles: [],
-    movementPattern: 'anti_extension',
-    equipmentRequired: ['bodyweight'],
-    difficulty: 'beginner',
-    type: 'isolation',
-    instructions: 'On your back, extend opposite arm and leg while keeping the low back pressed down.',
-    formCues: ['exhale on extension', 'slow tempo'],
-    contraindications: [],
-    substitutionSlugs: ['plank'],
+    substitutionSlugs: ['hanging-knee-raise'],
   },
   {
     name: 'Hanging Knee Raise',
@@ -634,7 +624,7 @@ const EXERCISE_SEED = [
     instructions: 'Hang and raise the knees toward the chest without swinging.',
     formCues: ['posterior tilt at the top', 'control the lower'],
     contraindications: ['shoulder hang pain'],
-    substitutionSlugs: ['dead-bug', 'plank'],
+    substitutionSlugs: ['plank'],
   },
   {
     name: 'Farmer Carry',
