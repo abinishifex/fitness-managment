@@ -7,7 +7,7 @@ import type { Exercise } from '@/lib/types';
 import {
   EXERCISE_TYPES,
   getExerciseMedia,
-  resolveExerciseType,
+  matchesExerciseType,
   type ExerciseTypeKey,
 } from '@/lib/exerciseMedia';
 import { ExerciseDetailModal } from '@/components/workout/ExerciseDetailModal';
@@ -51,7 +51,7 @@ function ExercisesContent() {
   const filtered = useMemo(() => {
     return exercises.filter((ex) => {
       const matchesType = activeType
-        ? resolveExerciseType(ex.primaryMuscles).key === activeType.key
+        ? matchesExerciseType(ex, activeType.key)
         : true;
       const q = query.trim().toLowerCase();
       const matchesQuery =

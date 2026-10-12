@@ -61,9 +61,28 @@ export const EXERCISE_TYPES: ExerciseTypeMeta[] = [
   {
     key: 'fullbody',
     label: 'Full body',
-    blurb: 'Compound power moves',
+    blurb: 'Existing compounds · small sets',
     image: '/exercises/fullbody.jpg',
-    muscles: ['full_body'],
+    // Full body sessions pull compounds from every region (not a separate muscle tag).
+    muscles: [
+      'chest',
+      'back',
+      'lats',
+      'traps',
+      'quads',
+      'hamstrings',
+      'glutes',
+      'shoulders',
+      'front_delts',
+      'side_delts',
+      'rear_delts',
+      'biceps',
+      'triceps',
+      'forearms',
+      'core',
+      'abs',
+      'obliques',
+    ],
   },
 ];
 
@@ -72,6 +91,7 @@ const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
   back: 'back',
   lats: 'back',
   traps: 'back',
+  upper_back: 'back',
   quads: 'legs',
   hamstrings: 'legs',
   glutes: 'legs',
@@ -86,7 +106,6 @@ const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
   core: 'core',
   abs: 'core',
   obliques: 'core',
-  full_body: 'fullbody',
 };
 
 export function resolveExerciseType(muscles: string[] = []): ExerciseTypeMeta {
@@ -95,6 +114,20 @@ export function resolveExerciseType(muscles: string[] = []): ExerciseTypeMeta {
     if (key) return EXERCISE_TYPES.find((t) => t.key === key)!;
   }
   return EXERCISE_TYPES.find((t) => t.key === 'fullbody')!;
+}
+
+/**
+ * Full body is not its own muscle group — it is the compound lifts already
+ * catalogued under chest/back/legs/etc., used together in small-set sessions.
+ */
+export function matchesExerciseType(
+  exercise: { primaryMuscles?: string[]; type?: string },
+  typeKey: ExerciseTypeKey
+): boolean {
+  if (typeKey === 'fullbody') {
+    return String(exercise.type || '').toLowerCase() === 'compound';
+  }
+  return resolveExerciseType(exercise.primaryMuscles || []).key === typeKey;
 }
 
 export function getExerciseImage(muscles: string[] = []): string {
