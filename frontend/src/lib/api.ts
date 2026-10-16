@@ -1,6 +1,7 @@
 import type {
   ActivePlan,
   AuthResponse,
+  BillingPlan,
   Exercise,
   GeneratePlanBody,
   PlanSummary,
@@ -36,10 +37,11 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 export const api = {
   login: (email: string, password: string) =>
     request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  register: (email: string, password: string) =>
+  listBillingPlans: () => request<{ plans: BillingPlan[] }>('/plans'),
+  register: (input: { email: string; password: string; phone: string; planId: string }) =>
     request<AuthResponse>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(input),
     }),
   logout: (token: string) => request<{ message: string }>('/auth/logout', { method: 'POST' }, token),
   getProfile: (token: string) => request<{ profile: Profile }>('/profile', {}, token),

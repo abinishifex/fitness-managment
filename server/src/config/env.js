@@ -26,6 +26,12 @@ function loadEnv() {
       process.env.AI_BASE_URL ||
       'https://generativelanguage.googleapis.com/v1beta/openai',
     aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS) || 30000,
+    // Billing / Day 1–2 integrations (Cloudinary + Telegram — Dev 2 wires live)
+    cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '',
   };
 }
 
