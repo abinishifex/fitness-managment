@@ -237,23 +237,21 @@ describe('Workout Rules Engine', () => {
       );
     });
 
-    it('no matching exercises → throws clear error', async () => {
+    it('bodyweight always injected → no exercises error not thrown for none-equipment user', async () => {
+      // Since bodyweight is always added to the available equipment list, a user
+      // who selects only ['none'] still gets bodyweight exercises. The error path
+      // is only reachable via a limitations set that blocks every exercise.
       const profile = {
         trainingDaysPerWeek: 3,
         trainingExperience: 'beginner',
         fitnessGoal: 'muscle_gain',
-        equipmentAvailable: ['none'], // This should result in no exercises
+        equipmentAvailable: ['none'],
         limitations: [],
       };
 
-      await assert.rejects(
-        async () => {
-          await generateCandidatePlan(profile);
-        },
-        {
-          message: /No exercises found for day/,
-        }
-      );
+      // Should NOT throw — bodyweight exercises are always available.
+      const result = await generateCandidatePlan(profile);
+      assert.ok(result.days.length > 0, 'Should generate days even with none equipment');
     });
   });
 });

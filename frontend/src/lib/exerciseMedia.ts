@@ -5,7 +5,8 @@ export type ExerciseTypeKey =
   | 'shoulders'
   | 'arms'
   | 'core'
-  | 'fullbody';
+  | 'fullbody'
+  | 'calisthenics';
 
 export type ExerciseTypeMeta = {
   key: ExerciseTypeKey;
@@ -84,6 +85,13 @@ export const EXERCISE_TYPES: ExerciseTypeMeta[] = [
       'obliques',
     ],
   },
+  {
+    key: 'calisthenics',
+    label: 'Calisthenics',
+    blurb: 'Bodyweight mastery',
+    image: '/exercises/calisthenics.jpg',
+    muscles: ['calisthenics'],
+  },
 ];
 
 const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
@@ -106,6 +114,7 @@ const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
   core: 'core',
   abs: 'core',
   obliques: 'core',
+  calisthenics: 'calisthenics',
 };
 
 export function resolveExerciseType(muscles: string[] = []): ExerciseTypeMeta {

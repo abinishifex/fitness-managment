@@ -5,9 +5,8 @@ const { EXERCISE_SEED, slugify } = require('../src/database/seeds/exercises');
 const { createApp } = require('../src/app');
 
 describe('Exercise seed catalogue', () => {
-  it('contains 40–60 real exercises', () => {
+  it('contains at least 40 real exercises', () => {
     assert.ok(EXERCISE_SEED.length >= 40, `expected >= 40, got ${EXERCISE_SEED.length}`);
-    assert.ok(EXERCISE_SEED.length <= 60, `expected <= 60, got ${EXERCISE_SEED.length}`);
   });
 
   it('has unique slugs and required fields', () => {

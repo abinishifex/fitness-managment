@@ -5,6 +5,8 @@
  * rules used by the AI Gateway request (system + user prompt).
  */
 
+const { FITNESS_GOAL_VALUES } = require('../../config/constants');
+
 const GOAL_PRESCRIPTION = {
   strength: {
     reps: '1-6 (main lifts)',
@@ -104,7 +106,7 @@ function normalizeIntake(intake = {}) {
     .toLowerCase();
   const fitnessGoal =
     goalAliases[rawGoal] ||
-    (['muscle_gain', 'fat_loss', 'general_fitness', 'strength'].includes(rawGoal)
+    (FITNESS_GOAL_VALUES.includes(rawGoal)
       ? rawGoal
       : 'muscle_gain');
 

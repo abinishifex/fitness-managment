@@ -62,9 +62,14 @@ export default function Onboarding() {
       const payload: Profile = { ...data };
       // Always include "bodyweight" so the rules engine always has at least one
       // equipment class to match against (bodyweight exercises are the safety baseline).
-      payload.equipmentAvailable = [
-        ...new Set([...payload.equipmentAvailable, 'bodyweight']),
-      ];
+      // For calisthenics goal, also set equipment to bodyweight-only.
+      if (training.fitnessGoal === 'calisthenics') {
+        payload.equipmentAvailable = ['bodyweight'];
+      } else {
+        payload.equipmentAvailable = [
+          ...new Set([...payload.equipmentAvailable, 'bodyweight']),
+        ];
+      }
       await offlineApi.saveProfile(t, payload);
       await offlineApi.generatePlan(t, {
         select: true,
@@ -82,12 +87,15 @@ export default function Onboarding() {
     }
   }
 
+  const isCalisthenics = training.fitnessGoal === 'calisthenics';
+  const totalSteps = isCalisthenics ? 2 : 3;
+
   return (
     <div className="form-shell">
       <div className="form-card" style={{ width: 'min(680px,100%)' }}>
-        <div className="eyebrow">Protocol setup // step {step} of 3</div>
+        <div className="eyebrow">Protocol setup // step {step} of {totalSteps}</div>
         <div className="steps">
-          {[1, 2, 3].map((i) => (
+          {Array.from({ length: totalSteps }, (_, i) => i + 1).map((i) => (
             <i className={i <= step ? 'on' : ''} key={i} />
           ))}
         </div>
@@ -156,6 +164,11 @@ export default function Onboarding() {
               These settings apply to your first plan. You can create more plans later with different goals.
             </p>
             <PlanTrainingFields value={training} onChange={setTraining} />
+            {training.fitnessGoal === 'calisthenics' && (
+              <div className="notice mt-3">
+                Calisthenics requires no equipment — you can start training right away.
+              </div>
+            )}
           </>
         )}
 
@@ -245,7 +258,7 @@ export default function Onboarding() {
           >
             Back
           </button>
-          {step < 3 ? (
+          {step < totalSteps ? (
             <button className="btn" onClick={() => setStep((s) => s + 1)}>
               Next
             </button>
