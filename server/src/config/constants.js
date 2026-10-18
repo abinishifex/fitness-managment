@@ -11,6 +11,7 @@ const FITNESS_GOAL_VALUES = [
   'fat_loss',
   'general_fitness',
   'strength',
+  'calisthenics',
 ];
 
 const TRAINING_EXPERIENCE_VALUES = ['beginner', 'intermediate', 'advanced'];

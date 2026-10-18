@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { FITNESS_GOAL_VALUES } = require('../../config/constants');
 
 const planExerciseSchema = new mongoose.Schema({
   exerciseId: {
@@ -57,7 +58,7 @@ const workoutPlanSchema = new mongoose.Schema({
   // so each library plan can have its own goal / experience / days / priorities.
   fitnessGoal: {
     type: String,
-    enum: ['muscle_gain', 'fat_loss', 'general_fitness', 'strength'],
+    enum: FITNESS_GOAL_VALUES,
     default: 'general_fitness',
   },
   trainingExperience: {

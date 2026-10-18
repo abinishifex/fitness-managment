@@ -36,6 +36,12 @@
       rest: '30-60 sec',
       rpe: 7,
     },
+    calisthenics: {
+      reps: '8-15',
+      sets: 3,
+      rest: '60-90 sec',
+      rpe: 7,
+    },
   };
 
   /**
@@ -112,6 +118,7 @@
       'forearms': ['forearms'],
       'traps': ['traps'],
       'upper back': ['upper_back'],
+      'calisthenics': ['calisthenics'],
     };
 
     const normalized = new Set();
@@ -138,14 +145,18 @@
   async function selectExercises(muscleFocusArray, equipmentAvailable, limitations, experienceLevel) {
     // Query: primaryMuscles intersects muscle focus, equipment available, no contraindications overlap
     
+  // Always include bodyweight and none — every user has their own body.
+  const baseEquipment = ['bodyweight', 'none'];
   const availableEquipment =
     equipmentAvailable && equipmentAvailable.length > 0
-      ? equipmentAvailable
-      : ['bodyweight'];
+      ? [...new Set([...equipmentAvailable, ...baseEquipment])]
+      : baseEquipment;
 
   const query = {
     isApproved: true,
     primaryMuscles: { $in: muscleFocusArray },
+    // An exercise is selectable only if every piece of equipment it needs
+    // is present in the user's available list (bodyweight/none always added above).
     equipmentRequired: {
       $not: { $elemMatch: { $nin: availableEquipment } },
     },
@@ -296,7 +307,10 @@
       for (const [index, day] of matchedTemplate.defaultStructure.entries()) {
         const dayOfWeek = typeof day.dayOfWeek === 'string' ? day.dayOfWeek : `Day ${index + 1}`;
         const muscleFocus = day.muscleGroups.join(', ');
-        const muscleFocusArray = parseMuscleFocus(muscleFocus);
+        // For calisthenics goal, always select from the calisthenics pool
+        const muscleFocusArray = fitnessGoal === 'calisthenics'
+          ? ['calisthenics']
+          : parseMuscleFocus(muscleFocus);
         
         // Select exercises for this day
         const availableExercises = await selectExercises(
@@ -346,7 +360,10 @@
       for (let i = 0; i < trainingDaysPerWeek; i++) {
         const dayOfWeek = `Day ${i + 1}`;
         const muscleFocus = splitType === 'full_body' ? 'Full Body' : 'TBD';
-        const muscleFocusArray = parseMuscleFocus(muscleFocus);
+        // For calisthenics goal, always select from the calisthenics pool
+        const muscleFocusArray = fitnessGoal === 'calisthenics'
+          ? ['calisthenics']
+          : parseMuscleFocus(muscleFocus);
         
         const availableExercises = await selectExercises(
           muscleFocusArray,

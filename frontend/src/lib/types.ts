@@ -20,7 +20,7 @@ export type AuthResponse = {
   plan?: BillingPlan;
 };
 
-export type FitnessGoal = 'muscle_gain' | 'fat_loss' | 'general_fitness' | 'strength';
+export type FitnessGoal = 'muscle_gain' | 'fat_loss' | 'general_fitness' | 'strength' | 'calisthenics';
 export type TrainingExperience = 'beginner' | 'intermediate' | 'advanced';
 
 /** Plan-scoped training intent (not member profile). */

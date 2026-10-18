@@ -43,6 +43,7 @@ export function PlanTrainingFields({ value, onChange, compact }: Props) {
             <option value="muscle_gain">Muscle gain</option>
             <option value="fat_loss">Fat loss</option>
             <option value="strength">Strength</option>
+            <option value="calisthenics">Calisthenics</option>
           </select>
         </div>
         <div className="field">
@@ -101,6 +102,7 @@ export const GOAL_LABELS: Record<string, string> = {
   fat_loss: 'Fat loss',
   general_fitness: 'General fitness',
   strength: 'Strength',
+  calisthenics: 'Calisthenics',
 };
 
 export function formatPlanTrainingSummary(plan: {

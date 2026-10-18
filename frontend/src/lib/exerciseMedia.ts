@@ -5,7 +5,8 @@ export type ExerciseTypeKey =
   | 'shoulders'
   | 'arms'
   | 'core'
-  | 'fullbody';
+  | 'fullbody'
+  | 'calisthenics';
 
 export type ExerciseTypeMeta = {
   key: ExerciseTypeKey;
@@ -84,6 +85,13 @@ export const EXERCISE_TYPES: ExerciseTypeMeta[] = [
       'obliques',
     ],
   },
+  {
+    key: 'calisthenics',
+    label: 'Calisthenics',
+    blurb: 'Bodyweight mastery',
+    image: '/exercises/calisthenics.jpg',
+    muscles: ['calisthenics'],
+  },
 ];
 
 const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
@@ -106,6 +114,8 @@ const MUSCLE_TO_TYPE: Record<string, ExerciseTypeKey> = {
   core: 'core',
   abs: 'core',
   obliques: 'core',
+  full_body: 'fullbody',
+  calisthenics: 'calisthenics',
 };
 
 export function resolveExerciseType(muscles: string[] = []): ExerciseTypeMeta {
@@ -115,6 +125,17 @@ export function resolveExerciseType(muscles: string[] = []): ExerciseTypeMeta {
   }
   return EXERCISE_TYPES.find((t) => t.key === 'fullbody')!;
 }
+
+export function getExerciseImage(muscles: string[] = []): string {
+  return resolveExerciseType(muscles).image;
+}
+
+export type ExerciseMedia = {
+  image: string;
+  video?: string;
+  poster?: string;
+  hasDemo: boolean;
+};
 
 /**
  * Full body is not its own muscle group — it is the compound lifts already
@@ -129,17 +150,6 @@ export function matchesExerciseType(
   }
   return resolveExerciseType(exercise.primaryMuscles || []).key === typeKey;
 }
-
-export function getExerciseImage(muscles: string[] = []): string {
-  return resolveExerciseType(muscles).image;
-}
-
-export type ExerciseMedia = {
-  image: string;
-  video?: string;
-  poster?: string;
-  hasDemo: boolean;
-};
 
 type DemoAsset = { video?: string; poster?: string };
 
