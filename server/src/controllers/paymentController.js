@@ -144,6 +144,24 @@ async function getInvoicesDueWithin(req, res, next) {
 }
 
 /**
+ * GET /api/invoices/:id — fetch a single invoice (owner or admin).
+ */
+async function getInvoice(req, res, next) {
+  try {
+    const invoice = await Invoice.findById(req.params.id).lean();
+    if (!invoice) throw createError(404, 'Invoice not found');
+
+    if (req.role !== 'admin' && String(invoice.userId) !== req.userId) {
+      throw createError(403, 'Access denied');
+    }
+
+    res.json({ success: true, data: { invoice: serializeInvoice(invoice) } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * GET /api/invoices — admin list; optional filters.
  */
 async function listInvoices(req, res, next) {
@@ -204,6 +222,7 @@ module.exports = {
   postCash,
   getPendingPayments,
   getInvoicesDueWithin,
+  getInvoice,
   listInvoices,
   postGenerateInvoice,
   serializePayment,

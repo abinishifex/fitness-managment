@@ -1,5 +1,10 @@
 const express = require('express');
-const { createCustomer, listMembers } = require('../controllers/adminMemberController');
+const {
+  createCustomer,
+  listMembers,
+  getMemberDetail,
+  patchMember,
+} = require('../controllers/adminMemberController');
 const requireAuth = require('../middleware/requireAuth');
 const requireRole = require('../middleware/requireRole');
 
@@ -10,5 +15,7 @@ router.use(requireRole('admin'));
 
 router.post('/members', createCustomer);
 router.get('/members', listMembers);
+router.get('/members/:id', getMemberDetail);
+router.patch('/members/:id', patchMember);
 
 module.exports = router;

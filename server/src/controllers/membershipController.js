@@ -33,6 +33,60 @@ function serializeInvoice(doc) {
 }
 
 /**
+ * GET /api/memberships/me/status — lightweight soft-gate check.
+ * Returns the current user's active membership status + any open invoice.
+ */
+async function getMyMembershipStatus(req, res, next) {
+  try {
+    // Find the most recently created active membership; fall back to any membership
+    const activeMembership = await Membership.findOne({
+      userId: req.userId,
+      status: 'active',
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const membership = activeMembership || (await Membership.findOne({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .lean());
+
+    if (!membership) {
+      return res.json({
+        success: true,
+        data: { status: 'none', membership: null, openInvoice: null },
+      });
+    }
+
+    const plan = await Plan.findById(membership.planId).lean();
+
+    // Find the oldest open/overdue invoice for this membership
+    const openInvoice = await Invoice.findOne({
+      membershipId: membership._id,
+      status: { $in: ['open', 'overdue'] },
+    })
+      .sort({ dueDate: 1 })
+      .lean();
+
+    const now = new Date();
+    let gate = membership.status;
+    if (membership.status === 'active' && membership.endDate <= now) {
+      gate = 'expired';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: gate,
+        membership: serializeMembership(membership, { plan }),
+        openInvoice: openInvoice ? serializeInvoice(openInvoice) : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * GET /api/memberships/me — current user's memberships (newest first)
  */
 async function getMyMemberships(req, res, next) {
@@ -157,6 +211,7 @@ async function listMembershipInvoices(req, res, next) {
 
 module.exports = {
   getMyMemberships,
+  getMyMembershipStatus,
   getMembership,
   listMemberships,
   listMembershipInvoices,
