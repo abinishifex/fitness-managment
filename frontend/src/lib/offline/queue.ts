@@ -1,5 +1,6 @@
 import type { GeneratePlanBody, Profile, UpdatePlanBody } from '../types';
-import { api, getToken } from '../api';
+import { api } from '../apiClient';
+import { getToken } from '../api';
 import {
   CACHE_KEYS,
   planCacheKey,
