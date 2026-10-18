@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "test": "node --require ./tests/loadEnv.js --test --test-concurrency=1 tests/*.test.js",
     "test:gemini": "node --require ./tests/loadEnv.js --test --test-concurrency=1 tests/aiGateway.test.js",
-    "seed:exercises": "node scripts/seedExercises.js"
+    "seed:exercises": "node scripts/seedExercises.js",
+    "seed:plans": "node scripts/seedPlans.js",
+    "bootstrap:admin": "node scripts/bootstrapAdmin.js"
   },
   "engines": {
     "node": ">=20"

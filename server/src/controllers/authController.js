@@ -4,11 +4,22 @@ const { z } = require('zod');
 const { User } = require('../database/models');
 const { env } = require('../config/env');
 const { createError } = require('../middleware/errorHandler');
+const { enrollMembership } = require('../services/billing/enrollMembership');
+const { serializeMembership, serializeInvoice } = require('./membershipController');
+const { serializePlan } = require('./planController');
+
+const phoneSchema = z
+  .string()
+  .min(7)
+  .max(32)
+  .regex(/^\+?[0-9\s\-()]+$/, 'Invalid phone format');
 
 // Validation schemas
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  phone: phoneSchema,
+  planId: z.string().min(1, 'planId is required'),
 });
 
 const loginSchema = z.object({
@@ -22,7 +33,8 @@ const passwordResetSchema = z.object({
 
 /**
  * POST /api/auth/register
- * Create a new user account
+ * Self-serve registration with plan choice and phone.
+ * Creates user + membership + first open invoice (payment still owed).
  */
 async function register(req, res, next) {
   try {
@@ -33,13 +45,19 @@ async function register(req, res, next) {
       throw createError(400, 'Validation failed', errors);
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, phone, planId } = parsed.data;
     const normalizedEmail = email.toLowerCase();
+    const normalizedPhone = phone.replace(/\s+/g, '');
 
     // Check if user already exists
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       throw createError(409, 'Email already registered');
+    }
+
+    const existingPhone = await User.findOne({ phone: normalizedPhone });
+    if (existingPhone) {
+      throw createError(409, 'Phone already registered');
     }
 
     // Hash password (12 salt rounds)
@@ -51,14 +69,30 @@ async function register(req, res, next) {
       user = await User.create({
         email: normalizedEmail,
         passwordHash,
+        phone: normalizedPhone,
         role: 'member', // default
       });
     } catch (err) {
-      // Concurrent register race: unique index violation → same as existing email
+      // Concurrent register race: unique index violation → same as existing email/phone
       if (err && (err.code === 11000 || err.code === '11000')) {
-        throw createError(409, 'Email already registered');
+        throw createError(409, 'Email or phone already registered');
       }
       throw err;
+    }
+
+    let membership;
+    let invoice;
+    let plan;
+    try {
+      ({ membership, invoice, plan } = await enrollMembership({
+        userId: user._id,
+        planId,
+        actorId: user._id.toString(),
+      }));
+    } catch (enrollErr) {
+      // Avoid orphan accounts when planId is invalid / plan inactive
+      await User.deleteOne({ _id: user._id }).catch(() => {});
+      throw enrollErr;
     }
 
     // Generate JWT
@@ -76,8 +110,12 @@ async function register(req, res, next) {
         user: {
           id: user._id.toString(),
           email: user.email,
+          phone: user.phone,
           role: user.role,
         },
+        membership: serializeMembership(membership, { plan }),
+        invoice: serializeInvoice(invoice),
+        plan: serializePlan(plan),
       },
     });
   } catch (err) {
@@ -132,6 +170,7 @@ async function login(req, res, next) {
         user: {
           id: user._id.toString(),
           email: user.email,
+          phone: user.phone,
           role: user.role,
         },
       },

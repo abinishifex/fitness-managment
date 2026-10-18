@@ -17,9 +17,15 @@ const {
   Exercise,
   WorkoutTemplate,
   AiDecision,
+  Plan,
+  Membership,
+  Invoice,
+  Payment,
+  AuditLog,
 } = require('../src/database/models');
 const { seedWorkoutTemplates } = require('../src/database/seedWorkoutTemplates');
 const { seedExercises } = require('../scripts/seedExercises');
+const { seedPlans } = require('../scripts/seedPlans');
 
 const PROFILE_BODY = {
   age: 28,
@@ -75,6 +81,8 @@ describe('E2E chain: register → profile → generate → today', () => {
   let userId;
   /** @type {string|undefined} */
   let profileId;
+  /** @type {string|undefined} */
+  let planId;
 
   before(async () => {
     const uri =
@@ -89,9 +97,10 @@ describe('E2E chain: register → profile → generate → today', () => {
       });
     }
 
-    const [exerciseCount, templateCount] = await Promise.all([
+    const [exerciseCount, templateCount, planCount] = await Promise.all([
       Exercise.countDocuments(),
       WorkoutTemplate.countDocuments({ isActive: true }),
+      Plan.countDocuments({ isActive: true }),
     ]);
     if (templateCount < 3) {
       await seedWorkoutTemplates();
@@ -99,6 +108,13 @@ describe('E2E chain: register → profile → generate → today', () => {
     if (exerciseCount < 40) {
       await seedExercises();
     }
+    if (planCount < 1) {
+      await seedPlans();
+    }
+
+    const monthly = await Plan.findOne({ slug: 'monthly', isActive: true }).lean();
+    assert.ok(monthly, 'monthly plan must exist for registration');
+    planId = monthly._id.toString();
 
     const app = createApp();
     server = app.listen(0);
@@ -115,6 +131,12 @@ describe('E2E chain: register → profile → generate → today', () => {
         await MemberProfile.deleteOne({ _id: profileId });
       }
       if (userId) {
+        await Membership.deleteMany({ userId });
+        await Invoice.deleteMany({ userId });
+        await Payment.deleteMany({ userId });
+        await AuditLog.deleteMany({
+          $or: [{ actorId: userId }, { entityId: userId }],
+        });
         await User.deleteOne({ _id: userId });
       } else if (email) {
         await User.deleteOne({ email });
@@ -133,12 +155,19 @@ describe('E2E chain: register → profile → generate → today', () => {
     const password = 'TestPass123!';
 
     const registered = await request(baseUrl, 'POST', '/api/auth/register', {
-      body: { email, password },
+      body: {
+        email,
+        password,
+        phone: `+2519${String(Date.now()).slice(-8)}`,
+        planId,
+      },
     });
     assert.equal(registered.status, 201, JSON.stringify(registered.body));
     assert.equal(registered.body.success, true);
     assert.ok(registered.body.data.token);
     assert.equal(registered.body.data.user.email, email.toLowerCase());
+    assert.ok(registered.body.data.membership);
+    assert.ok(registered.body.data.invoice);
     userId = registered.body.data.user.id;
     const token = registered.body.data.token;
 
@@ -196,7 +225,12 @@ describe('E2E chain: register → profile → generate → today', () => {
     const password = 'TestPass123!';
 
     const registered = await request(baseUrl, 'POST', '/api/auth/register', {
-      body: { email: lonelyEmail, password },
+      body: {
+        email: lonelyEmail,
+        password,
+        phone: `+2519${String(Date.now()).slice(-8)}`,
+        planId,
+      },
     });
     assert.equal(registered.status, 201, JSON.stringify(registered.body));
     const lonelyUserId = registered.body.data.user.id;
@@ -221,6 +255,9 @@ describe('E2E chain: register → profile → generate → today', () => {
         /profile/i
       );
     } finally {
+      await Membership.deleteMany({ userId: lonelyUserId });
+      await Invoice.deleteMany({ userId: lonelyUserId });
+      await Payment.deleteMany({ userId: lonelyUserId });
       await User.deleteOne({ _id: lonelyUserId });
     }
   });

@@ -6,6 +6,11 @@ const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const exerciseRoutes = require('./routes/exerciseRoutes');
 const workoutRoutes = require('./routes/workoutRoutes');
+const planRoutes = require('./routes/planRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 /**
  * Build the Express app (no listen / no DB connect).
@@ -40,6 +45,11 @@ function createApp() {
   app.use('/api/profile', profileRoutes);
   app.use('/api/exercises', exerciseRoutes);
   app.use('/api/workouts', workoutRoutes);
+  app.use('/api/plans', planRoutes);
+  app.use('/api/memberships', membershipRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/api/invoices', invoiceRoutes);
+  app.use('/api/admin', adminRoutes);
 
   // Placeholder for other API routes
   app.use('/api', (req, res) => {

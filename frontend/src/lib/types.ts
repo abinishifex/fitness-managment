@@ -1,5 +1,24 @@
-export type User = { id: string; email: string; role: string };
-export type AuthResponse = { token: string; user: User };
+export type User = { id: string; email: string; role: string; phone?: string | null };
+
+export type BillingPlan = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  currency: string;
+  interval: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type AuthResponse = {
+  token: string;
+  user: User;
+  membership?: { id: string; status: string; endDate: string };
+  invoice?: { id: string; status: string; amount: number; currency: string };
+  plan?: BillingPlan;
+};
 
 export type FitnessGoal = 'muscle_gain' | 'fat_loss' | 'general_fitness' | 'strength' | 'calisthenics';
 export type TrainingExperience = 'beginner' | 'intermediate' | 'advanced';
