@@ -156,10 +156,19 @@ async function getMemberDetail(req, res, next) {
       .lean();
     if (!user) throw createError(404, 'Member not found');
 
-    // Active membership (most recent if multiple)
-    const membership = await Membership.findOne({ userId: user._id, status: MEMBERSHIP_STATUS.ACTIVE })
+    // Prefer active membership; fall back to most recent (expired/cancelled)
+    let membership = await Membership.findOne({
+      userId: user._id,
+      status: MEMBERSHIP_STATUS.ACTIVE,
+    })
       .sort({ createdAt: -1 })
       .lean();
+
+    if (!membership) {
+      membership = await Membership.findOne({ userId: user._id })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
 
     let plan = null;
     let invoices = [];
@@ -172,20 +181,6 @@ async function getMemberDetail(req, res, next) {
           .limit(12)
           .lean(),
       ]);
-    } else {
-      // Fallback: any non-cancelled membership (expired)
-      const anyMembership = await Membership.findOne({ userId: user._id })
-        .sort({ createdAt: -1 })
-        .lean();
-      if (anyMembership) {
-        [plan, invoices] = await Promise.all([
-          Plan.findById(anyMembership.planId).lean(),
-          Invoice.find({ membershipId: anyMembership._id })
-            .sort({ periodStart: -1 })
-            .limit(12)
-            .lean(),
-        ]);
-      }
     }
 
     res.json({
@@ -237,7 +232,9 @@ async function patchMember(req, res, next) {
 
     await writeAudit({
       actorId: req.userId,
-      action: parsed.data.isActive ? AUDIT_ACTION.CUSTOMER_CREATED : AUDIT_ACTION.PAYMENT_REJECTED,
+      action: parsed.data.isActive
+        ? AUDIT_ACTION.MEMBER_REACTIVATED
+        : AUDIT_ACTION.MEMBER_DEACTIVATED,
       entityType: 'User',
       entityId: user._id,
       meta: { isActive: parsed.data.isActive, changedBy: req.userId },

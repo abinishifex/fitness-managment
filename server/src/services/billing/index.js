@@ -7,6 +7,9 @@ const {
   markOverdueInvoices,
 } = require('./invoiceGenerator');
 const { enrollMembership } = require('./enrollMembership');
+const { approvePayment } = require('./approvePayment');
+const { rejectPayment } = require('./rejectPayment');
+const { recordTransfer } = require('./recordTransfer');
 const { addDays, daysForInterval, nextPeriod } = require('./period');
 
 module.exports = {
@@ -17,6 +20,9 @@ module.exports = {
   generateInvoiceForMembership,
   markOverdueInvoices,
   enrollMembership,
+  approvePayment,
+  rejectPayment,
+  recordTransfer,
   addDays,
   daysForInterval,
   nextPeriod,

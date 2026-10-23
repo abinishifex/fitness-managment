@@ -16,12 +16,28 @@ function serializeMembership(doc, { plan = null } = {}) {
   };
 }
 
+function idOf(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'object' && ref._id) return ref._id.toString();
+  return ref.toString?.() || String(ref);
+}
+
 function serializeInvoice(doc) {
+  const userRef = doc.userId;
+  const user =
+    userRef && typeof userRef === 'object' && userRef._id
+      ? {
+          id: userRef._id.toString(),
+          email: userRef.email || null,
+          phone: userRef.phone || null,
+        }
+      : null;
   return {
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
-    membershipId: doc.membershipId.toString(),
-    planId: doc.planId.toString(),
+    userId: user ? user.id : idOf(doc.userId),
+    user,
+    membershipId: idOf(doc.membershipId),
+    planId: idOf(doc.planId),
     periodStart: doc.periodStart,
     periodEnd: doc.periodEnd,
     amount: doc.amount,

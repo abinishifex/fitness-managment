@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 type Props = {
   open: boolean;
@@ -10,6 +10,7 @@ type Props = {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: ReactNode;
 };
 
 export function ConfirmModal({
@@ -20,6 +21,7 @@ export function ConfirmModal({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  children,
 }: Props) {
   useEffect(() => {
     if (!open) return;
@@ -54,6 +56,7 @@ export function ConfirmModal({
           <p id="confirm-modal-message" className="text-sm text-steel-bright mt-2">
             {message}
           </p>
+          {children}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className="btn secondary" onClick={onCancel}>
