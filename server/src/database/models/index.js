@@ -12,6 +12,8 @@ const Membership = require('./Membership');
 const Invoice = require('./Invoice');
 const Payment = require('./Payment');
 const AuditLog = require('./AuditLog');
+const ContactPref = require('./ContactPref');
+const ReminderLog = require('./ReminderLog');
 
 module.exports = {
   User,
@@ -27,4 +29,6 @@ module.exports = {
   Invoice,
   Payment,
   AuditLog,
+  ContactPref,
+  ReminderLog,
 };

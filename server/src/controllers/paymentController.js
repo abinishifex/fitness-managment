@@ -5,22 +5,49 @@ const {
   listPendingPayments,
   listInvoicesDueWithin,
   generateInvoiceForMembership,
+  approvePayment,
+  rejectPayment,
+  recordTransfer,
 } = require('../services/billing');
+const {
+  uploadScreenshotOrStub,
+  signedScreenshotUrl,
+} = require('../services/upload/cloudinary');
 const { createError } = require('../middleware/errorHandler');
 const { serializeInvoice } = require('./membershipController');
 
+function idOf(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'object' && ref._id) return ref._id.toString();
+  return ref.toString?.() || String(ref);
+}
+
+function serializeUserLite(ref) {
+  if (!ref || typeof ref !== 'object' || !ref._id) return null;
+  return {
+    id: ref._id.toString(),
+    email: ref.email || null,
+    phone: ref.phone || null,
+  };
+}
+
 function serializePayment(doc) {
+  const publicId = doc.screenshotPublicId || null;
+  const freshUrl = publicId ? signedScreenshotUrl(publicId) : null;
+  const user = serializeUserLite(doc.userId);
   return {
     id: doc._id.toString(),
-    invoiceId: doc.invoiceId?.toString?.() || String(doc.invoiceId),
-    userId: doc.userId?.toString?.() || String(doc.userId),
+    invoiceId: idOf(doc.invoiceId),
+    userId: user ? user.id : idOf(doc.userId),
+    user,
     amount: doc.amount,
     currency: doc.currency,
     method: doc.method,
     status: doc.status,
-    screenshotUrl: doc.screenshotUrl,
-    recordedBy: doc.recordedBy ? String(doc.recordedBy) : null,
-    reviewedBy: doc.reviewedBy ? String(doc.reviewedBy) : null,
+    screenshotUrl: freshUrl || doc.screenshotUrl,
+    screenshotPublicId: publicId,
+    recordedBy: doc.recordedBy ? idOf(doc.recordedBy) : null,
+    reviewedBy: doc.reviewedBy ? idOf(doc.reviewedBy) : null,
     reviewedAt: doc.reviewedAt,
     rejectReason: doc.rejectReason,
     appliedAt: doc.appliedAt,
@@ -91,7 +118,7 @@ async function postCash(req, res, next) {
 }
 
 /**
- * GET /api/payments/pending — admin review queue (Day 2; stub-ready Day 1).
+ * GET /api/payments/pending — admin review queue.
  */
 async function getPendingPayments(req, res, next) {
   try {
@@ -107,6 +134,89 @@ async function getPendingPayments(req, res, next) {
         total: result.total,
         limit: result.limit,
         skip: result.skip,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const rejectSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+/**
+ * POST /api/payments/:id/approve — admin approves pending transfer → applyPayment.
+ */
+async function postApprovePayment(req, res, next) {
+  try {
+    const result = await approvePayment(req.params.id, { actorId: req.userId });
+    res.json({
+      success: true,
+      data: {
+        payment: serializePayment(result.payment),
+        invoice: result.invoice ? serializeInvoice(result.invoice) : null,
+        membership: serializeMembershipLite(result.membership),
+        alreadyApproved: Boolean(result.alreadyApproved || result.alreadyApplied),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/payments/:id/reject — admin rejects pending transfer.
+ */
+async function postRejectPayment(req, res, next) {
+  try {
+    const parsed = rejectSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      const errors = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw createError(400, 'Validation failed', errors);
+    }
+
+    const result = await rejectPayment(req.params.id, {
+      actorId: req.userId,
+      reason: parsed.data.reason || null,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        payment: serializePayment(result.payment),
+        alreadyRejected: Boolean(result.alreadyRejected),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/payments/transfer — member uploads screenshot for an open invoice.
+ * Expects multipart field "screenshot" and body field invoiceId.
+ */
+async function postTransfer(req, res, next) {
+  try {
+    const invoiceId = req.body?.invoiceId;
+    if (!invoiceId) throw createError(400, 'invoiceId is required');
+
+    const idempotencyKey = req.body?.idempotencyKey || null;
+    const upload = await uploadScreenshotOrStub(req.file);
+    const result = await recordTransfer({
+      invoiceId,
+      userId: req.userId,
+      screenshotUrl: upload.url,
+      screenshotPublicId: upload.publicId || null,
+      idempotencyKey,
+    });
+
+    res.status(result.alreadyRecorded ? 200 : 201).json({
+      success: true,
+      data: {
+        payment: serializePayment(result.payment),
+        alreadyRecorded: Boolean(result.alreadyRecorded),
       },
     });
   } catch (err) {
@@ -144,6 +254,24 @@ async function getInvoicesDueWithin(req, res, next) {
 }
 
 /**
+ * GET /api/invoices/:id — fetch a single invoice (owner or admin).
+ */
+async function getInvoice(req, res, next) {
+  try {
+    const invoice = await Invoice.findById(req.params.id).lean();
+    if (!invoice) throw createError(404, 'Invoice not found');
+
+    if (req.role !== 'admin' && String(invoice.userId) !== req.userId) {
+      throw createError(403, 'Access denied');
+    }
+
+    res.json({ success: true, data: { invoice: serializeInvoice(invoice) } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
  * GET /api/invoices — admin list; optional filters.
  */
 async function listInvoices(req, res, next) {
@@ -157,7 +285,12 @@ async function listInvoices(req, res, next) {
     const skip = Math.max(Number(req.query.skip) || 0, 0);
 
     const [items, total] = await Promise.all([
-      Invoice.find(filter).sort({ dueDate: 1 }).skip(skip).limit(limit).lean(),
+      Invoice.find(filter)
+        .populate('userId', 'email phone')
+        .sort({ dueDate: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Invoice.countDocuments(filter),
     ]);
 
@@ -203,7 +336,11 @@ async function postGenerateInvoice(req, res, next) {
 module.exports = {
   postCash,
   getPendingPayments,
+  postApprovePayment,
+  postRejectPayment,
+  postTransfer,
   getInvoicesDueWithin,
+  getInvoice,
   listInvoices,
   postGenerateInvoice,
   serializePayment,

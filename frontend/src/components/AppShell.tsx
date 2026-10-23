@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Brand } from './Brand';
 import { SyncBanner } from './SyncBanner';
-import { clearSession, getToken, api } from '@/lib/api';
+import { SoftGateBanner } from './SoftGateBanner';
+import { clearSession, getToken, getUser, api } from '@/lib/api';
 import { SyncProvider, clearOfflineCache, clearQueue } from '@/lib/offline';
 
 const links = [
@@ -14,6 +15,8 @@ const links = [
   ['/app/exercises', 'Types'],
   ['/app/progress', 'Progress'],
   ['/app/plans', 'Plans'],
+  ['/app/membership', 'Membership'],
+  ['/app/telegram', 'Telegram'],
   ['/app/profile', 'Profile'],
 ] as const;
 
@@ -64,12 +67,18 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-footer">
+          {getUser()?.role === 'admin' && (
+            <Link href="/admin" className="side-nav-button" style={{ display: 'block', marginBottom: 8 }}>
+              Admin
+            </Link>
+          )}
           <button type="button" className="side-nav-button" onClick={logout}>
             Sign out
           </button>
         </div>
       </aside>
       <main className="main">
+        <SoftGateBanner />
         <SyncBanner />
         {children}
       </main>

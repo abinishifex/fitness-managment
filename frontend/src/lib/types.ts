@@ -174,3 +174,79 @@ export type ActivePlan = {
   todayDayOfWeek: string;
   days: ActivePlanDay[];
 };
+
+export type Membership = {
+  id: string;
+  userId: string;
+  planId: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  plan?: BillingPlan;
+};
+
+export type Invoice = {
+  id: string;
+  userId: string;
+  user?: { id: string; email?: string | null; phone?: string | null } | null;
+  membershipId: string;
+  planId: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  currency: string;
+  status: string;
+  dueDate: string;
+  paidAt?: string | null;
+};
+
+export type Payment = {
+  id: string;
+  invoiceId: string;
+  userId: string;
+  user?: { id: string; email?: string | null; phone?: string | null } | null;
+  amount: number;
+  currency: string;
+  method: string;
+  status: string;
+  screenshotUrl?: string | null;
+  screenshotPublicId?: string | null;
+  recordedBy?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  rejectReason?: string | null;
+  appliedAt?: string | null;
+  idempotencyKey?: string | null;
+  createdAt?: string;
+};
+
+export type MembershipStatus = {
+  status: string;
+  membership: Membership | null;
+  openInvoice: Invoice | null;
+};
+
+export type AdminMember = {
+  id: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  isActive: boolean;
+  createdAt?: string;
+};
+
+export type AdminOverview = {
+  pendingPayments: number;
+  overdueInvoices: number;
+};
+
+export type TelegramLinkStatus = {
+  linked: boolean;
+  telegramChatId?: string | null;
+  hasPendingCode?: boolean;
+  codeExpiresAt?: string | null;
+  botUsername?: string | null;
+  deepLinkBase?: string | null;
+};

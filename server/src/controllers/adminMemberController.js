@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const { z } = require('zod');
-const { User } = require('../database/models');
+const { User, Membership, Invoice, Plan } = require('../database/models');
 const { enrollMembership } = require('../services/billing/enrollMembership');
-const { AUDIT_ACTION } = require('../billing/enums');
+const { AUDIT_ACTION, MEMBERSHIP_STATUS, INVOICE_STATUS } = require('../billing/enums');
 const { writeAudit } = require('../services/billing/audit');
 const { createError } = require('../middleware/errorHandler');
 const { serializeMembership, serializeInvoice } = require('./membershipController');
@@ -146,7 +146,120 @@ async function listMembers(req, res, next) {
   }
 }
 
+/**
+ * GET /api/admin/members/:id — full detail: user + active membership + plan + recent invoices.
+ */
+async function getMemberDetail(req, res, next) {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('email phone role isActive createdAt')
+      .lean();
+    if (!user) throw createError(404, 'Member not found');
+
+    // Prefer active membership; fall back to most recent (expired/cancelled)
+    let membership = await Membership.findOne({
+      userId: user._id,
+      status: MEMBERSHIP_STATUS.ACTIVE,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!membership) {
+      membership = await Membership.findOne({ userId: user._id })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
+
+    let plan = null;
+    let invoices = [];
+
+    if (membership) {
+      [plan, invoices] = await Promise.all([
+        Plan.findById(membership.planId).lean(),
+        Invoice.find({ membershipId: membership._id })
+          .sort({ periodStart: -1 })
+          .limit(12)
+          .lean(),
+      ]);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        member: {
+          id: user._id.toString(),
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+        },
+        membership: membership
+          ? serializeMembership(membership, { plan })
+          : null,
+        plan: plan ? serializePlan(plan) : null,
+        invoices: invoices.map(serializeInvoice),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const patchMemberSchema = z.object({
+  isActive: z.boolean(),
+});
+
+/**
+ * PATCH /api/admin/members/:id — toggle isActive (deactivate / reactivate).
+ */
+async function patchMember(req, res, next) {
+  try {
+    const parsed = patchMemberSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const errors = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw createError(400, 'Validation failed', errors);
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) throw createError(404, 'Member not found');
+    if (user.role === 'admin' && req.userId === user._id.toString()) {
+      throw createError(400, 'Admin cannot deactivate themselves');
+    }
+
+    user.isActive = parsed.data.isActive;
+    await user.save();
+
+    await writeAudit({
+      actorId: req.userId,
+      action: parsed.data.isActive
+        ? AUDIT_ACTION.MEMBER_REACTIVATED
+        : AUDIT_ACTION.MEMBER_DEACTIVATED,
+      entityType: 'User',
+      entityId: user._id,
+      meta: { isActive: parsed.data.isActive, changedBy: req.userId },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        member: {
+          id: user._id.toString(),
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          isActive: user.isActive,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createCustomer,
   listMembers,
+  getMemberDetail,
+  patchMember,
 };

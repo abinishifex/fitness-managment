@@ -16,12 +16,28 @@ function serializeMembership(doc, { plan = null } = {}) {
   };
 }
 
+function idOf(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'object' && ref._id) return ref._id.toString();
+  return ref.toString?.() || String(ref);
+}
+
 function serializeInvoice(doc) {
+  const userRef = doc.userId;
+  const user =
+    userRef && typeof userRef === 'object' && userRef._id
+      ? {
+          id: userRef._id.toString(),
+          email: userRef.email || null,
+          phone: userRef.phone || null,
+        }
+      : null;
   return {
     id: doc._id.toString(),
-    userId: doc.userId.toString(),
-    membershipId: doc.membershipId.toString(),
-    planId: doc.planId.toString(),
+    userId: user ? user.id : idOf(doc.userId),
+    user,
+    membershipId: idOf(doc.membershipId),
+    planId: idOf(doc.planId),
     periodStart: doc.periodStart,
     periodEnd: doc.periodEnd,
     amount: doc.amount,
@@ -30,6 +46,60 @@ function serializeInvoice(doc) {
     dueDate: doc.dueDate,
     paidAt: doc.paidAt,
   };
+}
+
+/**
+ * GET /api/memberships/me/status — lightweight soft-gate check.
+ * Returns the current user's active membership status + any open invoice.
+ */
+async function getMyMembershipStatus(req, res, next) {
+  try {
+    // Find the most recently created active membership; fall back to any membership
+    const activeMembership = await Membership.findOne({
+      userId: req.userId,
+      status: 'active',
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const membership = activeMembership || (await Membership.findOne({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .lean());
+
+    if (!membership) {
+      return res.json({
+        success: true,
+        data: { status: 'none', membership: null, openInvoice: null },
+      });
+    }
+
+    const plan = await Plan.findById(membership.planId).lean();
+
+    // Find the oldest open/overdue invoice for this membership
+    const openInvoice = await Invoice.findOne({
+      membershipId: membership._id,
+      status: { $in: ['open', 'overdue'] },
+    })
+      .sort({ dueDate: 1 })
+      .lean();
+
+    const now = new Date();
+    let gate = membership.status;
+    if (membership.status === 'active' && membership.endDate <= now) {
+      gate = 'expired';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: gate,
+        membership: serializeMembership(membership, { plan }),
+        openInvoice: openInvoice ? serializeInvoice(openInvoice) : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -157,6 +227,7 @@ async function listMembershipInvoices(req, res, next) {
 
 module.exports = {
   getMyMemberships,
+  getMyMembershipStatus,
   getMembership,
   listMemberships,
   listMembershipInvoices,

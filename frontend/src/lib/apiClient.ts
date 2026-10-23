@@ -6,12 +6,19 @@
  */
 import type {
   ActivePlan,
+  AdminMember,
+  AdminOverview,
   AuthResponse,
   BillingPlan,
   Exercise,
   GeneratePlanBody,
+  Invoice,
+  Membership,
+  MembershipStatus,
+  Payment,
   PlanSummary,
   Profile,
+  TelegramLinkStatus,
   TodayWorkout,
   UpdatePlanBody,
   WorkoutPlan,
@@ -20,13 +27,18 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  // Let the browser set multipart boundary when body is FormData
+  if (!(init.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    headers,
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -89,4 +101,121 @@ export const api = {
     return request<{ count: number; exercises: Exercise[] }>(`/exercises${qs ? `?${qs}` : ''}`);
   },
   getExercise: (idOrSlug: string) => request<{ exercise: Exercise }>(`/exercises/${idOrSlug}`),
+
+  // Billing — member
+  getMembershipStatus: (token: string) =>
+    request<MembershipStatus>('/memberships/me/status', {}, token),
+  getMyMemberships: (token: string) =>
+    request<{ memberships: Membership[] }>('/memberships/me', {}, token),
+  getMembershipInvoices: (token: string, membershipId: string) =>
+    request<{ invoices: Invoice[] }>(`/memberships/${membershipId}/invoices`, {}, token),
+  submitTransfer: (
+    token: string,
+    input: { invoiceId: string; file: File; idempotencyKey?: string }
+  ) => {
+    const form = new FormData();
+    form.append('invoiceId', input.invoiceId);
+    form.append('screenshot', input.file);
+    if (input.idempotencyKey) form.append('idempotencyKey', input.idempotencyKey);
+    return request<{ payment: Payment; alreadyRecorded: boolean }>(
+      '/payments/transfer',
+      { method: 'POST', body: form },
+      token
+    );
+  },
+  getTelegramStatus: (token: string) =>
+    request<TelegramLinkStatus>('/telegram/status', {}, token),
+  createTelegramLinkCode: (token: string) =>
+    request<{
+      code: string;
+      expiresAt: string;
+      linked: boolean;
+      instructions: string;
+      botUsername?: string | null;
+      deepLink?: string | null;
+    }>('/telegram/link-code', { method: 'POST' }, token),
+
+  // Billing — admin
+  getAdminOverview: (token: string) =>
+    request<AdminOverview>('/admin/overview', {}, token),
+  listAdminMembers: (token: string, params: { q?: string; limit?: number; skip?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set('q', params.q);
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    if (params.skip != null) qs.set('skip', String(params.skip));
+    const q = qs.toString();
+    return request<{ members: AdminMember[]; total: number; limit: number; skip: number }>(
+      `/admin/members${q ? `?${q}` : ''}`,
+      {},
+      token
+    );
+  },
+  getAdminMember: (token: string, id: string) =>
+    request<{
+      member: AdminMember;
+      membership: Membership | null;
+      plan: BillingPlan | null;
+      invoices: Invoice[];
+    }>(`/admin/members/${id}`, {}, token),
+  createAdminMember: (
+    token: string,
+    input: { email: string; password: string; phone: string; planId: string }
+  ) =>
+    request<{
+      user: AdminMember;
+      membership: Membership;
+      invoice: Invoice;
+      plan: BillingPlan;
+    }>('/admin/members', { method: 'POST', body: JSON.stringify(input) }, token),
+  patchAdminMember: (token: string, id: string, input: { isActive: boolean }) =>
+    request<{ member: AdminMember }>(
+      `/admin/members/${id}`,
+      { method: 'PATCH', body: JSON.stringify(input) },
+      token
+    ),
+  listAdminInvoices: (
+    token: string,
+    params: { status?: string; userId?: string; limit?: number; skip?: number } = {}
+  ) => {
+    const qs = new URLSearchParams();
+    if (params.status) qs.set('status', params.status);
+    if (params.userId) qs.set('userId', params.userId);
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    if (params.skip != null) qs.set('skip', String(params.skip));
+    const q = qs.toString();
+    return request<{ invoices: Invoice[]; total: number }>('/invoices' + (q ? `?${q}` : ''), {}, token);
+  },
+  recordCash: (
+    token: string,
+    input: { membershipId: string; amount?: number; idempotencyKey?: string }
+  ) =>
+    request<{
+      payment: Payment;
+      invoice: Invoice | null;
+      membership: Membership | null;
+      alreadyRecorded: boolean;
+    }>('/payments/cash', { method: 'POST', body: JSON.stringify(input) }, token),
+  listPendingPayments: (token: string, params: { limit?: number; skip?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    if (params.skip != null) qs.set('skip', String(params.skip));
+    const q = qs.toString();
+    return request<{ payments: Payment[]; total: number }>(
+      `/payments/pending${q ? `?${q}` : ''}`,
+      {},
+      token
+    );
+  },
+  approvePayment: (token: string, paymentId: string) =>
+    request<{ payment: Payment; alreadyApproved: boolean }>(
+      `/payments/${paymentId}/approve`,
+      { method: 'POST', body: JSON.stringify({}) },
+      token
+    ),
+  rejectPayment: (token: string, paymentId: string, reason?: string) =>
+    request<{ payment: Payment; alreadyRejected: boolean }>(
+      `/payments/${paymentId}/reject`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+      token
+    ),
 };

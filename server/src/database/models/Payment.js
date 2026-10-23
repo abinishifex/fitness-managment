@@ -34,6 +34,8 @@ const paymentSchema = new mongoose.Schema(
     },
     /** Cloudinary (or other) URL — Day 2 transfer screenshots. */
     screenshotUrl: { type: String, default: null },
+    /** Cloudinary public_id — used to mint fresh signed preview URLs. */
+    screenshotPublicId: { type: String, default: null },
     /** Admin who recorded cash / reviewed transfer. */
     recordedBy: {
       type: mongoose.Schema.Types.ObjectId,

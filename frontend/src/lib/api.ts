@@ -5,10 +5,19 @@
  * existing consumers don't need to change their import path).
  */
 export { api } from './apiClient';
-import type { AuthResponse } from './types';
+import type { AuthResponse, User } from './types';
 
 export function getToken() {
   return typeof window === 'undefined' ? null : window.localStorage.getItem('forge_token');
+}
+export function getUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('forge_user');
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
 }
 export function saveSession(auth: AuthResponse) {
   localStorage.setItem('forge_token', auth.token);

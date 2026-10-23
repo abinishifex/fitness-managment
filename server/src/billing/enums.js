@@ -42,7 +42,10 @@ const AUDIT_ACTION = Object.freeze({
   MEMBERSHIP_CREATED: 'membership_created',
   PAYMENT_APPROVED: 'payment_approved',
   PAYMENT_REJECTED: 'payment_rejected',
+  TRANSFER_SUBMITTED: 'transfer_submitted',
   CUSTOMER_CREATED: 'customer_created',
+  MEMBER_DEACTIVATED: 'member_deactivated',
+  MEMBER_REACTIVATED: 'member_reactivated',
 });
 
 const PLAN_INTERVAL_VALUES = Object.values(PLAN_INTERVAL);
